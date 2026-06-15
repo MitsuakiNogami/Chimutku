@@ -721,6 +721,30 @@
           slots: createSlots("レーン", 4, 3),
         },
         {
+          id: "darts-league-standard",
+          category: "darts",
+          name: "ダーツリーグ戦 13試合",
+          assignmentMode: "balanced-reuse",
+          constraints: {
+            maxGamesPerParticipant: 7,
+            maxSinglesPerParticipant: 2,
+          },
+          description: "シングル1名、ダブルス2名、トリオス3名、ガロン4名の固定フォーマットです。",
+          slots: createDartsLeagueSlots(),
+        },
+        {
+          id: "darts-kanto-tournament",
+          category: "darts",
+          name: "関東大会 5試合",
+          assignmentMode: "balanced-reuse",
+          constraints: {
+            maxGamesPerParticipant: 7,
+            maxSinglesPerParticipant: 2,
+          },
+          description: "関東大会用の固定フォーマットです。",
+          slots: createDartsKantoTournamentSlots(),
+        },
+        {
           id: "darts-01-doubles",
           category: "darts",
           name: "ダーツ 01 ダブルス",
@@ -733,18 +757,6 @@
           name: "クリケット トリオス",
           slotPrefix: "チーム",
           slots: createSlots("チーム", 4, 3),
-        },
-        {
-          id: "darts-league-standard",
-          category: "darts",
-          name: "ダーツリーグ戦 13試合",
-          assignmentMode: "balanced-reuse",
-          constraints: {
-            maxGamesPerParticipant: 7,
-            maxSinglesPerParticipant: 2,
-          },
-          description: "シングル1名、ダブルス2名、トリオス3名、ガロン4名の固定フォーマットです。",
-          slots: createDartsLeagueSlots(),
         },
         {
           id: "custom",
@@ -969,6 +981,23 @@
         }));
       }
 
+      function createDartsKantoTournamentSlots() {
+        return [
+          ["第1戦 901 トリオス", 3, "trios"],
+          ["第2戦 クリケット トリオス", 3, "trios"],
+          ["第3戦 501F ダブルス", 2, "doubles"],
+          ["第4戦 クリケット ダブルス", 2, "doubles"],
+          ["第5戦 1101 ガロン", 4, "gallon"],
+        ].map(([label, capacity, gameType], index) => ({
+          id: `darts-kanto-${index + 1}`,
+          label,
+          capacity,
+          gameType,
+          gameFamily: label.includes("クリケット") ? "cricket" : "01",
+          half: "first",
+        }));
+      }
+
       function getParticipants() {
         return participantsInput.value
           .split(/\r?\n/)
@@ -999,12 +1028,12 @@
         };
       }
 
-      function isDartsLeagueFormat() {
-        return getFormat().id === "darts-league-standard";
+      function isDartsMatchFormat() {
+        return getFormat().assignmentMode === "balanced-reuse";
       }
 
       function renderLeaguePreferences() {
-        if (!isDartsLeagueFormat()) {
+        if (!isDartsMatchFormat()) {
           leaguePreferences.classList.remove("show");
           leaguePreferenceRows.innerHTML = "";
           return;
