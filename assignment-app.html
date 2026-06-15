@@ -1,0 +1,1553 @@
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>メンバー割り振り</title>
+    <style>
+      :root {
+        color-scheme: light;
+        --bg: #f6f7f9;
+        --panel: #ffffff;
+        --panel-soft: #eef4f7;
+        --text: #172026;
+        --muted: #66737d;
+        --line: #dce3e8;
+        --primary: #176b5d;
+        --primary-strong: #0f5449;
+        --accent: #c24b36;
+        --warn-bg: #fff4de;
+        --warn-text: #725016;
+        --shadow: 0 16px 48px rgba(23, 32, 38, 0.08);
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        background: var(--bg);
+        color: var(--text);
+        font-family:
+          system-ui,
+          -apple-system,
+          BlinkMacSystemFont,
+          "Segoe UI",
+          sans-serif;
+        letter-spacing: 0;
+      }
+
+      button,
+      input,
+      textarea,
+      select {
+        font: inherit;
+      }
+
+      button {
+        border: 0;
+        cursor: pointer;
+      }
+
+      .shell {
+        min-height: 100vh;
+        display: grid;
+        grid-template-rows: auto 1fr;
+      }
+
+      .topbar {
+        border-bottom: 1px solid var(--line);
+        background: rgba(255, 255, 255, 0.92);
+        backdrop-filter: blur(14px);
+        position: sticky;
+        top: 0;
+        z-index: 5;
+      }
+
+      .topbar-inner {
+        width: min(1180px, calc(100% - 32px));
+        margin: 0 auto;
+        min-height: 64px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 16px;
+      }
+
+      .brand {
+        min-width: 0;
+      }
+
+      .brand h1 {
+        margin: 0;
+        font-size: clamp(20px, 3vw, 28px);
+        line-height: 1.1;
+      }
+
+      .brand p {
+        margin: 6px 0 0;
+        color: var(--muted);
+        font-size: 13px;
+      }
+
+      .main {
+        width: min(1180px, calc(100% - 32px));
+        margin: 24px auto 48px;
+        display: grid;
+        grid-template-columns: minmax(320px, 420px) 1fr;
+        gap: 20px;
+      }
+
+      .panel {
+        background: var(--panel);
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        box-shadow: var(--shadow);
+      }
+
+      .controls {
+        padding: 18px;
+        align-self: start;
+        position: sticky;
+        top: 88px;
+      }
+
+      .section {
+        padding: 18px 0;
+        border-top: 1px solid var(--line);
+      }
+
+      .section:first-child {
+        padding-top: 0;
+        border-top: 0;
+      }
+
+      .section h2,
+      .results h2 {
+        margin: 0 0 12px;
+        font-size: 15px;
+        line-height: 1.25;
+      }
+
+      label {
+        display: block;
+        margin: 0 0 8px;
+        color: var(--muted);
+        font-size: 13px;
+      }
+
+      textarea,
+      select,
+      input {
+        width: 100%;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        background: #fff;
+        color: var(--text);
+        outline: none;
+      }
+
+      textarea {
+        min-height: 210px;
+        resize: vertical;
+        padding: 12px;
+        line-height: 1.5;
+      }
+
+      select,
+      input {
+        height: 42px;
+        padding: 0 12px;
+      }
+
+      textarea:focus,
+      select:focus,
+      input:focus {
+        border-color: var(--primary);
+        box-shadow: 0 0 0 3px rgba(23, 107, 93, 0.14);
+      }
+
+      .grid-2 {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 12px;
+      }
+
+      .format-preview {
+        margin-top: 12px;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        background: var(--panel-soft);
+        padding: 12px;
+        color: var(--muted);
+        font-size: 13px;
+        line-height: 1.5;
+      }
+
+      .format-tabs {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 8px;
+        margin-bottom: 12px;
+      }
+
+      .format-tab {
+        min-height: 38px;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        background: #fff;
+        color: var(--muted);
+        font-weight: 800;
+      }
+
+      .format-tab.active {
+        border-color: var(--primary);
+        background: var(--primary);
+        color: #fff;
+      }
+
+      .league-preferences {
+        display: none;
+        margin-top: 12px;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        background: #fff;
+        overflow: hidden;
+      }
+
+      .league-preferences.show {
+        display: block;
+      }
+
+      .preference-head,
+      .preference-row {
+        display: grid;
+        grid-template-columns: minmax(96px, 1fr) 112px 112px;
+        gap: 8px;
+        align-items: center;
+        padding: 8px 10px;
+      }
+
+      .preference-head {
+        background: #f9fbfc;
+        color: var(--muted);
+        font-size: 12px;
+        font-weight: 800;
+        border-bottom: 1px solid var(--line);
+      }
+
+      .preference-row + .preference-row {
+        border-top: 1px solid var(--line);
+      }
+
+      .preference-name {
+        min-width: 0;
+        overflow-wrap: anywhere;
+        font-size: 13px;
+        font-weight: 800;
+      }
+
+      .preference-row select {
+        height: 34px;
+        padding: 0 8px;
+        font-size: 13px;
+      }
+
+      .bowling-fields {
+        display: none;
+        margin-top: 12px;
+      }
+
+      .bowling-fields.show {
+        display: block;
+      }
+
+      .lane-capacity-list {
+        margin-top: 12px;
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 10px;
+      }
+
+      .history-panel {
+        margin-top: 20px;
+        padding-top: 18px;
+        border-top: 1px solid var(--line);
+      }
+
+      .history-head {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 10px;
+        margin-bottom: 10px;
+      }
+
+      .history-head h2 {
+        margin: 0;
+      }
+
+      .history-list {
+        display: grid;
+        gap: 10px;
+      }
+
+      .history-item {
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        background: #fff;
+        padding: 10px;
+      }
+
+      .history-meta {
+        display: grid;
+        gap: 4px;
+        color: var(--muted);
+        font-size: 12px;
+      }
+
+      .history-title {
+        color: var(--text);
+        font-size: 13px;
+        font-weight: 800;
+      }
+
+      .history-actions {
+        display: grid;
+        grid-template-columns: 1fr auto;
+        gap: 8px;
+        margin-top: 10px;
+      }
+
+      .history-actions .btn {
+        min-height: 34px;
+        padding: 0 10px;
+        font-size: 12px;
+      }
+
+      .actions {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 10px;
+      }
+
+      .btn {
+        min-height: 44px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+        border-radius: 8px;
+        padding: 0 14px;
+        color: var(--text);
+        background: #e8edf0;
+        font-weight: 700;
+        white-space: nowrap;
+      }
+
+      .btn svg {
+        width: 18px;
+        height: 18px;
+        flex: 0 0 auto;
+      }
+
+      .btn.primary {
+        grid-column: 1 / -1;
+        background: var(--primary);
+        color: #fff;
+      }
+
+      .btn.primary:hover {
+        background: var(--primary-strong);
+      }
+
+      .btn:hover {
+        filter: brightness(0.98);
+      }
+
+      .meta-row {
+        margin-top: 12px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 8px;
+        color: var(--muted);
+        font-size: 13px;
+      }
+
+      .results {
+        padding: 18px;
+        min-height: 540px;
+      }
+
+      .result-head {
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        gap: 16px;
+        margin-bottom: 16px;
+      }
+
+      .result-head p {
+        margin: 4px 0 0;
+        color: var(--muted);
+        font-size: 13px;
+      }
+
+      .toast {
+        min-height: 32px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 999px;
+        padding: 0 12px;
+        background: var(--warn-bg);
+        color: var(--warn-text);
+        font-size: 12px;
+        font-weight: 700;
+        opacity: 0;
+        transform: translateY(-4px);
+        transition: 0.2s ease;
+      }
+
+      .toast.show {
+        opacity: 1;
+        transform: translateY(0);
+      }
+
+      .cards {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 14px;
+      }
+
+      .slot-card {
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        background: #fff;
+        min-height: 148px;
+        overflow: hidden;
+      }
+
+      .slot-title {
+        min-height: 44px;
+        padding: 0 12px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 8px;
+        border-bottom: 1px solid var(--line);
+        background: #f9fbfc;
+        font-weight: 800;
+      }
+
+      .slot-title span:last-child {
+        color: var(--muted);
+        font-size: 12px;
+        font-weight: 700;
+      }
+
+      .slot-title span:first-child {
+        min-width: 0;
+        overflow-wrap: anywhere;
+        line-height: 1.25;
+      }
+
+      .member-list {
+        list-style: none;
+        margin: 0;
+        padding: 10px;
+        display: grid;
+        gap: 8px;
+      }
+
+      .member {
+        min-height: 36px;
+        display: flex;
+        align-items: center;
+        border-radius: 8px;
+        background: #eef4f7;
+        padding: 0 10px;
+        font-weight: 700;
+      }
+
+      .member.editable {
+        padding: 0;
+        background: transparent;
+      }
+
+      .member-select {
+        height: 36px;
+        border-radius: 8px;
+        background: #eef4f7;
+        font-weight: 800;
+      }
+
+      .empty {
+        min-height: 260px;
+        display: grid;
+        place-items: center;
+        text-align: center;
+        color: var(--muted);
+        border: 1px dashed var(--line);
+        border-radius: 8px;
+        padding: 28px;
+      }
+
+      .waiting {
+        margin-top: 14px;
+        border-color: #f0c36a;
+      }
+
+      .waiting .slot-title {
+        background: var(--warn-bg);
+        color: var(--warn-text);
+      }
+
+      @media (max-width: 860px) {
+        .topbar-inner,
+        .main {
+          width: min(100% - 24px, 680px);
+        }
+
+        .main {
+          grid-template-columns: 1fr;
+          margin-top: 16px;
+        }
+
+        .controls {
+          position: static;
+        }
+
+        .cards {
+          grid-template-columns: 1fr;
+        }
+      }
+
+      @media (max-width: 520px) {
+        .topbar-inner {
+          min-height: 72px;
+        }
+
+        .brand p {
+          display: none;
+        }
+
+        .grid-2,
+        .lane-capacity-list,
+        .actions,
+        .history-actions,
+        .preference-head,
+        .preference-row {
+          grid-template-columns: 1fr;
+        }
+
+        .btn.primary {
+          grid-column: auto;
+        }
+
+        .result-head {
+          display: block;
+        }
+
+        .toast {
+          margin-top: 10px;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="shell">
+      <header class="topbar">
+        <div class="topbar-inner">
+          <div class="brand">
+            <h1>メンバー割り振り</h1>
+            <p>フォーマットを選んで、参加者をランダムに枠へ割り当てます。</p>
+          </div>
+        </div>
+      </header>
+
+      <main class="main">
+        <section class="panel controls" aria-label="割り振り設定">
+          <div class="section">
+            <h2>参加者</h2>
+            <label for="participants">名前を1行に1人ずつ入力</label>
+            <textarea id="participants" spellcheck="false"></textarea>
+            <div class="meta-row">
+              <span id="participantCount">0名</span>
+              <span id="capacityCount">定員 12名</span>
+            </div>
+          </div>
+
+          <div class="section">
+            <h2>フォーマット</h2>
+            <div class="format-tabs" role="tablist" aria-label="テンプレートカテゴリ">
+              <button class="format-tab" type="button" role="tab" data-category="bowling">ボーリング</button>
+              <button class="format-tab" type="button" role="tab" data-category="darts">ダーツ</button>
+              <button class="format-tab" type="button" role="tab" data-category="custom">カスタム</button>
+            </div>
+            <label for="formatSelect">テンプレート</label>
+            <select id="formatSelect"></select>
+            <div id="customFields" class="grid-2" style="margin-top: 12px; display: none">
+              <div>
+                <label for="slotCount">枠数</label>
+                <input id="slotCount" type="number" min="1" max="64" value="4" />
+              </div>
+              <div>
+                <label for="slotCapacity">1枠の人数</label>
+                <input id="slotCapacity" type="number" min="1" max="20" value="3" />
+              </div>
+            </div>
+            <div id="bowlingFields" class="bowling-fields">
+              <label for="bowlingLaneCount">レーン数</label>
+              <input id="bowlingLaneCount" type="number" min="1" max="32" value="4" />
+              <div id="laneCapacityList" class="lane-capacity-list"></div>
+            </div>
+            <div id="formatPreview" class="format-preview"></div>
+            <div id="leaguePreferences" class="league-preferences" aria-label="ダーツリーグ優先設定">
+              <div class="preference-head">
+                <span>メンバー</span>
+                <span>前半</span>
+                <span>後半</span>
+              </div>
+              <div id="leaguePreferenceRows"></div>
+            </div>
+          </div>
+
+          <div class="section">
+            <div class="actions">
+              <button id="assignButton" class="btn primary" type="button" title="割り振る">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M16 3h5v5"></path>
+                  <path d="M4 20 21 3"></path>
+                  <path d="M21 16v5h-5"></path>
+                  <path d="M15 15 21 21"></path>
+                  <path d="M4 4l5 5"></path>
+                </svg>
+                割り振る
+              </button>
+              <button id="rerollButton" class="btn" type="button" title="再抽選">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M21 12a9 9 0 0 0-15-6.7L3 8"></path>
+                  <path d="M3 3v5h5"></path>
+                  <path d="M3 12a9 9 0 0 0 15 6.7l3-2.7"></path>
+                  <path d="M16 16h5v5"></path>
+                </svg>
+                再抽選
+              </button>
+              <button id="copyButton" class="btn" type="button" title="結果をコピー">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <rect x="9" y="9" width="13" height="13" rx="2"></rect>
+                  <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+                </svg>
+                コピー
+              </button>
+              <button id="saveHistoryButton" class="btn" type="button" title="履歴に保存">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2Z"></path>
+                  <path d="M17 21v-8H7v8"></path>
+                  <path d="M7 3v5h8"></path>
+                </svg>
+                履歴保存
+              </button>
+            </div>
+            <div class="history-panel">
+              <div class="history-head">
+                <h2>履歴</h2>
+                <button id="clearHistoryButton" class="btn" type="button">全削除</button>
+              </div>
+              <div id="historyList" class="history-list"></div>
+            </div>
+          </div>
+        </section>
+
+        <section class="panel results" aria-label="割り振り結果">
+          <div class="result-head">
+            <div>
+              <h2>結果</h2>
+              <p id="resultSummary">参加者を入力して割り振ってください。</p>
+            </div>
+            <div id="toast" class="toast" role="status" aria-live="polite"></div>
+          </div>
+          <div id="resultArea" class="empty">まだ結果はありません。</div>
+        </section>
+      </main>
+    </div>
+
+    <script>
+      const storageKeys = {
+        participants: "member-assignment.participants",
+        formatId: "member-assignment.formatId",
+        category: "member-assignment.category",
+        custom: "member-assignment.customFormat",
+        leaguePreferences: "member-assignment.leaguePreferences",
+        bowling: "member-assignment.bowlingFormat",
+        history: "member-assignment.history",
+      };
+
+      const templates = [
+        {
+          id: "bowling-4x3",
+          category: "bowling",
+          name: "ボーリング",
+          slotPrefix: "レーン",
+          slots: createSlots("レーン", 4, 3),
+        },
+        {
+          id: "darts-01-doubles",
+          category: "darts",
+          name: "ダーツ 01 ダブルス",
+          slotPrefix: "チーム",
+          slots: createSlots("チーム", 4, 2),
+        },
+        {
+          id: "darts-cricket-trios",
+          category: "darts",
+          name: "クリケット トリオス",
+          slotPrefix: "チーム",
+          slots: createSlots("チーム", 4, 3),
+        },
+        {
+          id: "darts-league-standard",
+          category: "darts",
+          name: "ダーツリーグ戦 13試合",
+          assignmentMode: "balanced-reuse",
+          constraints: {
+            maxGamesPerParticipant: 7,
+            maxSinglesPerParticipant: 2,
+          },
+          description: "シングル1名、ダブルス2名、トリオス3名、ガロン4名の固定フォーマットです。",
+          slots: createDartsLeagueSlots(),
+        },
+        {
+          id: "custom",
+          category: "custom",
+          name: "カスタム",
+          slotPrefix: "枠",
+          slots: createSlots("枠", 4, 3),
+        },
+      ];
+
+      const state = {
+        currentResult: null,
+        activeCategory: "bowling",
+      };
+
+      const participantsInput = document.querySelector("#participants");
+      const participantCount = document.querySelector("#participantCount");
+      const capacityCount = document.querySelector("#capacityCount");
+      const formatTabs = [...document.querySelectorAll(".format-tab")];
+      const formatSelect = document.querySelector("#formatSelect");
+      const customFields = document.querySelector("#customFields");
+      const slotCount = document.querySelector("#slotCount");
+      const slotCapacity = document.querySelector("#slotCapacity");
+      const bowlingFields = document.querySelector("#bowlingFields");
+      const bowlingLaneCount = document.querySelector("#bowlingLaneCount");
+      const laneCapacityList = document.querySelector("#laneCapacityList");
+      const formatPreview = document.querySelector("#formatPreview");
+      const leaguePreferences = document.querySelector("#leaguePreferences");
+      const leaguePreferenceRows = document.querySelector("#leaguePreferenceRows");
+      const resultArea = document.querySelector("#resultArea");
+      const resultSummary = document.querySelector("#resultSummary");
+      const toast = document.querySelector("#toast");
+      const historyList = document.querySelector("#historyList");
+
+      document.querySelector("#assignButton").addEventListener("click", assignAndRender);
+      document.querySelector("#rerollButton").addEventListener("click", assignAndRender);
+      document.querySelector("#copyButton").addEventListener("click", copyResult);
+      document.querySelector("#saveHistoryButton").addEventListener("click", saveCurrentResultToHistory);
+      document.querySelector("#clearHistoryButton").addEventListener("click", clearHistory);
+      participantsInput.addEventListener("input", () => {
+        state.currentResult = null;
+        renderEmptyResult();
+        persist();
+        renderLeaguePreferences();
+        updateCountsAndPreview();
+      });
+      formatSelect.addEventListener("change", () => {
+        state.currentResult = null;
+        renderEmptyResult();
+        renderBowlingLaneInputs();
+        persist();
+        renderLeaguePreferences();
+        updateCountsAndPreview();
+      });
+      formatTabs.forEach((tab) => {
+        tab.addEventListener("click", () => {
+          state.activeCategory = tab.dataset.category;
+          state.currentResult = null;
+          renderFormatOptions();
+          renderEmptyResult();
+          renderBowlingLaneInputs();
+          persist();
+          renderLeaguePreferences();
+          updateCountsAndPreview();
+        });
+      });
+      slotCount.addEventListener("input", () => {
+        state.currentResult = null;
+        renderEmptyResult();
+        persist();
+        updateCountsAndPreview();
+      });
+      slotCapacity.addEventListener("input", () => {
+        state.currentResult = null;
+        renderEmptyResult();
+        persist();
+        updateCountsAndPreview();
+      });
+      bowlingLaneCount.addEventListener("input", () => {
+        state.currentResult = null;
+        renderEmptyResult();
+        renderBowlingLaneInputs();
+        persist();
+        updateCountsAndPreview();
+      });
+
+      init();
+
+      function init() {
+        participantsInput.value =
+          localStorage.getItem(storageKeys.participants) ||
+          ["田中", "佐藤", "鈴木", "高橋", "伊藤", "渡辺", "山本", "中村", "小林", "加藤", "吉田", "山田"].join("\n");
+
+        const custom = readJson(storageKeys.custom);
+        if (custom) {
+          slotCount.value = custom.slotCount || 4;
+          slotCapacity.value = custom.slotCapacity || 3;
+        }
+
+        const bowling = readJson(storageKeys.bowling);
+        if (bowling) {
+          bowlingLaneCount.value = bowling.laneCount || 4;
+        }
+
+        const savedFormatId = localStorage.getItem(storageKeys.formatId) || "bowling-4x3";
+        const savedTemplate = templates.find((template) => template.id === savedFormatId) || templates[0];
+        state.activeCategory = localStorage.getItem(storageKeys.category) || savedTemplate.category;
+        renderFormatOptions(savedTemplate.id);
+        renderBowlingLaneInputs();
+        renderLeaguePreferences();
+        renderHistoryList();
+        updateCountsAndPreview();
+      }
+
+      function renderFormatOptions(preferredFormatId) {
+        const visibleTemplates = templates.filter((template) => template.category === state.activeCategory);
+        const selectedId =
+          preferredFormatId && visibleTemplates.some((template) => template.id === preferredFormatId)
+            ? preferredFormatId
+            : visibleTemplates[0]?.id;
+
+        formatSelect.innerHTML = "";
+        visibleTemplates.forEach((template) => {
+          const option = document.createElement("option");
+          option.value = template.id;
+          option.textContent = template.name;
+          formatSelect.append(option);
+        });
+        formatSelect.value = selectedId;
+
+        formatTabs.forEach((tab) => {
+          const isActive = tab.dataset.category === state.activeCategory;
+          tab.classList.toggle("active", isActive);
+          tab.setAttribute("aria-selected", String(isActive));
+        });
+      }
+
+      function createSlots(prefix, count, capacity) {
+        return Array.from({ length: count }, (_, index) => ({
+          id: `${prefix}-${index + 1}`,
+          label: `${index + 1}${prefix}`,
+          capacity,
+        }));
+      }
+
+      function createBowlingSlots() {
+        const capacities = getBowlingCapacities();
+        return capacities.map((capacity, index) => ({
+          id: `lane-${index + 1}`,
+          label: `${index + 1}レーン`,
+          capacity,
+        }));
+      }
+
+      function getBowlingCapacities() {
+        const laneCount = clampNumber(Number(bowlingLaneCount.value), 1, 32);
+        const saved = readJson(storageKeys.bowling);
+        const inputs = [...laneCapacityList.querySelectorAll(".lane-capacity-input")];
+        return Array.from({ length: laneCount }, (_, index) => {
+          const inputValue = Number(inputs[index]?.value);
+          const savedValue = Number(saved?.capacities?.[index]);
+          return clampNumber(Number.isFinite(inputValue) && inputValue > 0 ? inputValue : savedValue || 3, 1, 20);
+        });
+      }
+
+      function renderBowlingLaneInputs() {
+        const laneCount = clampNumber(Number(bowlingLaneCount.value), 1, 32);
+        const capacities = getBowlingCapacities();
+        laneCapacityList.innerHTML = "";
+
+        for (let index = 0; index < laneCount; index += 1) {
+          const wrapper = document.createElement("div");
+          const inputId = `laneCapacity-${index + 1}`;
+          wrapper.innerHTML = `
+            <label for="${inputId}">${index + 1}レーン人数</label>
+            <input id="${inputId}" class="lane-capacity-input" type="number" min="1" max="20" value="${capacities[index]}" />
+          `;
+          laneCapacityList.append(wrapper);
+        }
+
+        laneCapacityList.querySelectorAll(".lane-capacity-input").forEach((input) => {
+          input.addEventListener("input", () => {
+            state.currentResult = null;
+            renderEmptyResult();
+            persist();
+            updateCountsAndPreview();
+          });
+        });
+      }
+
+      function createDartsLeagueSlots() {
+        return [
+          ["第1戦 701 トリオス", 3, "trios"],
+          ["第2戦 クリケット トリオス", 3, "trios"],
+          ["第3戦 501 ダブルス", 2, "doubles"],
+          ["第4戦 501F ダブルス", 2, "doubles"],
+          ["第5戦 701 シングル", 1, "single"],
+          ["第6戦 クリケット シングル", 1, "single"],
+          ["第7戦 901 トリオス", 3, "trios"],
+          ["第8戦 クリケット トリオス", 3, "trios"],
+          ["第9戦 クリケット ダブルス", 2, "doubles"],
+          ["第10戦 501F シングル", 1, "single"],
+          ["第11戦 501 シングル", 1, "single"],
+          ["第12戦 クリケット シングル", 1, "single"],
+          ["第13戦 1101 ガロン", 4, "gallon"],
+        ].map(([label, capacity, gameType], index) => ({
+          id: `darts-league-${index + 1}`,
+          label,
+          capacity,
+          gameType,
+          gameFamily: label.includes("クリケット") ? "cricket" : "01",
+          half: index < 6 ? "first" : "second",
+        }));
+      }
+
+      function getParticipants() {
+        return participantsInput.value
+          .split(/\r?\n/)
+          .map((name) => name.trim())
+          .filter(Boolean)
+          .map((name, index) => ({
+            id: `p-${index}-${name}`,
+            name,
+            active: true,
+          }));
+      }
+
+      function getFormat() {
+        const selected = templates.find((template) => template.id === formatSelect.value) || templates[0];
+        if (selected.id === "bowling-4x3") {
+          return {
+            ...selected,
+            slots: createBowlingSlots(),
+          };
+        }
+        if (selected.id !== "custom") return selected;
+
+        const count = clampNumber(Number(slotCount.value), 1, 64);
+        const capacity = clampNumber(Number(slotCapacity.value), 1, 20);
+        return {
+          ...selected,
+          slots: createSlots("枠", count, capacity),
+        };
+      }
+
+      function isDartsLeagueFormat() {
+        return getFormat().id === "darts-league-standard";
+      }
+
+      function renderLeaguePreferences() {
+        if (!isDartsLeagueFormat()) {
+          leaguePreferences.classList.remove("show");
+          leaguePreferenceRows.innerHTML = "";
+          return;
+        }
+
+        const preferences = readJson(storageKeys.leaguePreferences) || {};
+        const participants = getParticipants();
+        leaguePreferenceRows.innerHTML = "";
+        leaguePreferences.classList.add("show");
+
+        participants.forEach((participant) => {
+          const row = document.createElement("div");
+          row.className = "preference-row";
+          row.innerHTML = `
+            <span class="preference-name">${escapeHtml(participant.name)}</span>
+            ${createPreferenceSelectMarkup(participant.name, "first", preferences[participant.name]?.first || "neutral")}
+            ${createPreferenceSelectMarkup(participant.name, "second", preferences[participant.name]?.second || "neutral")}
+          `;
+          leaguePreferenceRows.append(row);
+        });
+
+        leaguePreferenceRows.querySelectorAll("select").forEach((select) => {
+          select.addEventListener("change", () => {
+            const nextPreferences = readJson(storageKeys.leaguePreferences) || {};
+            const name = select.dataset.name;
+            const half = select.dataset.half;
+            nextPreferences[name] = nextPreferences[name] || { first: "neutral", second: "neutral" };
+            nextPreferences[name][half] = select.value;
+            localStorage.setItem(storageKeys.leaguePreferences, JSON.stringify(nextPreferences));
+          });
+        });
+      }
+
+      function createPreferenceSelectMarkup(name, half, value) {
+        const options = [
+          ["neutral", "指定なし"],
+          ["01", "01優先"],
+          ["cricket", "クリケ優先"],
+        ];
+        const optionMarkup = options
+          .map(([optionValue, label]) => `<option value="${optionValue}" ${value === optionValue ? "selected" : ""}>${label}</option>`)
+          .join("");
+        return `<select data-name="${escapeHtml(name)}" data-half="${half}" aria-label="${escapeHtml(name)} ${half}">${optionMarkup}</select>`;
+      }
+
+      function assignParticipants(participants, format) {
+        const activeParticipants = participants.filter((participant) => participant.active);
+        if (format.assignmentMode === "balanced-reuse") {
+          return assignParticipantsWithBalancedReuse(activeParticipants, format);
+        }
+
+        const shuffled = shuffle(activeParticipants);
+        let cursor = 0;
+
+        const assignments = format.slots.map((slot) => {
+          const members = shuffled.slice(cursor, cursor + slot.capacity);
+          cursor += slot.capacity;
+          return {
+            slotId: slot.id,
+            slotLabel: slot.label,
+            capacity: slot.capacity,
+            participants: members,
+          };
+        });
+
+        return {
+          assignments,
+          waiting: shuffled.slice(cursor),
+        };
+      }
+
+      function assignParticipantsWithBalancedReuse(participants, format) {
+        const leaguePreferences = readJson(storageKeys.leaguePreferences) || {};
+        const appearanceCounts = new Map(participants.map((participant) => [participant.id, 0]));
+        const singleCounts = new Map(participants.map((participant) => [participant.id, 0]));
+        const maxGames = format.constraints?.maxGamesPerParticipant || Number.POSITIVE_INFINITY;
+        const maxSingles = format.constraints?.maxSinglesPerParticipant || Number.POSITIVE_INFINITY;
+
+        const assignments = format.slots.map((slot) => {
+          const members = [];
+
+          for (let index = 0; index < slot.capacity; index += 1) {
+            const usedInSlot = new Set(members.map((participant) => participant.id));
+            const candidates = shuffle(participants)
+              .filter((participant) => !usedInSlot.has(participant.id))
+              .filter((participant) => (appearanceCounts.get(participant.id) || 0) < maxGames)
+              .filter(
+                (participant) =>
+                  slot.gameType !== "single" || (singleCounts.get(participant.id) || 0) < maxSingles
+              )
+              .sort((a, b) => {
+                return (
+                  getLeagueCandidateScore(a, slot, appearanceCounts, singleCounts, leaguePreferences) -
+                  getLeagueCandidateScore(b, slot, appearanceCounts, singleCounts, leaguePreferences)
+                );
+              });
+
+            if (candidates.length === 0) break;
+            const selected = candidates[0];
+            members.push(selected);
+            appearanceCounts.set(selected.id, (appearanceCounts.get(selected.id) || 0) + 1);
+            if (slot.gameType === "single") {
+              singleCounts.set(selected.id, (singleCounts.get(selected.id) || 0) + 1);
+            }
+          }
+
+          return {
+            slotId: slot.id,
+            slotLabel: slot.label,
+            capacity: slot.capacity,
+            gameType: slot.gameType,
+            participants: members,
+          };
+        });
+
+        return {
+          assignments,
+          waiting: [],
+          assignmentMode: format.assignmentMode,
+          constraints: format.constraints,
+          appearanceCounts: Object.fromEntries(appearanceCounts),
+          singleCounts: Object.fromEntries(singleCounts),
+          totalCapacity: format.slots.reduce((total, slot) => total + slot.capacity, 0),
+        };
+      }
+
+      function getLeagueCandidateScore(participant, slot, appearanceCounts, singleCounts, leaguePreferences) {
+        const preference = leaguePreferences[participant.name]?.[slot.half] || "neutral";
+        const preferenceBonus = preference === slot.gameFamily ? 0.65 : 0;
+        const mismatchPenalty = preference !== "neutral" && preference !== slot.gameFamily ? 0.2 : 0;
+
+        return (
+          (appearanceCounts.get(participant.id) || 0) * 10 +
+          (singleCounts.get(participant.id) || 0) * 2 +
+          mismatchPenalty -
+          preferenceBonus
+        );
+      }
+
+      function shuffle(items) {
+        const next = [...items];
+        for (let index = next.length - 1; index > 0; index -= 1) {
+          const swapIndex = Math.floor(Math.random() * (index + 1));
+          [next[index], next[swapIndex]] = [next[swapIndex], next[index]];
+        }
+        return next;
+      }
+
+      function assignAndRender() {
+        const participants = getParticipants();
+        if (participants.length === 0) {
+          showToast("参加者を入力してください");
+          return;
+        }
+
+        state.currentResult = assignParticipants(participants, getFormat());
+        renderResult(state.currentResult);
+        persist();
+      }
+
+      function renderResult(result) {
+        resultArea.className = "";
+        resultArea.innerHTML = "";
+
+        const cards = document.createElement("div");
+        cards.className = "cards";
+        result.assignments.forEach((assignment, assignmentIndex) => {
+          cards.append(createSlotCard(assignment, assignmentIndex));
+        });
+        resultArea.append(cards);
+
+        if (result.waiting.length > 0) {
+          resultArea.append(
+            createSlotCard(
+              {
+                slotLabel: "待機",
+                capacity: result.waiting.length,
+                participants: result.waiting,
+                isWaiting: true,
+              },
+              -1
+            )
+          );
+        }
+
+        const assignedCount = result.assignments.reduce((total, assignment) => total + countAssignedMembers(assignment), 0);
+        if (result.assignmentMode === "balanced-reuse") {
+          resultSummary.textContent = `${result.assignments.length}試合、延べ${assignedCount}/${result.totalCapacity}枠を割り振りました。`;
+        } else {
+          resultSummary.textContent = `${assignedCount}名を割り振り、${result.waiting.length}名が待機です。`;
+        }
+      }
+
+      function renderEmptyResult() {
+        resultArea.className = "empty";
+        resultArea.textContent = "まだ結果はありません。";
+        resultSummary.textContent = "参加者を入力して割り振ってください。";
+      }
+
+      function createSlotCard(assignment, assignmentIndex) {
+        const card = document.createElement("article");
+        card.className = assignment.isWaiting ? "slot-card waiting" : "slot-card";
+
+        const title = document.createElement("div");
+        title.className = "slot-title";
+        title.innerHTML = `<span>${escapeHtml(assignment.slotLabel)}</span><span>${countAssignedMembers(assignment)}/${assignment.capacity}</span>`;
+        card.append(title);
+
+        const list = document.createElement("ul");
+        list.className = "member-list";
+        if (assignment.participants.length === 0) {
+          for (let index = 0; index < assignment.capacity; index += 1) {
+            const item = document.createElement("li");
+            item.className = "member";
+            item.textContent = "空き";
+            list.append(item);
+          }
+        } else {
+          for (let index = 0; index < assignment.capacity; index += 1) {
+            const participant = assignment.participants[index] || null;
+            const item = document.createElement("li");
+            item.className = state.currentResult?.assignmentMode === "balanced-reuse" ? "member editable" : "member";
+
+            if (state.currentResult?.assignmentMode === "balanced-reuse") {
+              item.append(createMemberSelect(assignmentIndex, index, participant?.id || ""));
+            } else {
+              item.textContent = participant?.name || "空き";
+            }
+            list.append(item);
+          }
+        }
+        card.append(list);
+        return card;
+      }
+
+      function countAssignedMembers(assignment) {
+        return assignment.participants.filter(Boolean).length;
+      }
+
+      function createMemberSelect(assignmentIndex, seatIndex, selectedParticipantId) {
+        const select = document.createElement("select");
+        select.className = "member-select";
+        select.dataset.assignmentIndex = String(assignmentIndex);
+        select.dataset.seatIndex = String(seatIndex);
+        select.setAttribute("aria-label", "出場メンバー");
+
+        const emptyOption = document.createElement("option");
+        emptyOption.value = "";
+        emptyOption.textContent = "空き";
+        select.append(emptyOption);
+
+        getParticipants().forEach((participant) => {
+          const option = document.createElement("option");
+          option.value = participant.id;
+          option.textContent = participant.name;
+          select.append(option);
+        });
+
+        select.value = selectedParticipantId;
+        select.addEventListener("change", handleManualMemberChange);
+        return select;
+      }
+
+      function handleManualMemberChange(event) {
+        if (!state.currentResult) return;
+
+        const assignmentIndex = Number(event.target.dataset.assignmentIndex);
+        const seatIndex = Number(event.target.dataset.seatIndex);
+        const assignment = state.currentResult.assignments[assignmentIndex];
+        const participants = getParticipants();
+        const selected = participants.find((participant) => participant.id === event.target.value) || null;
+
+        const nextParticipants = [...assignment.participants];
+        if (
+          selected &&
+          nextParticipants.some((participant, index) => participant?.id === selected.id && index !== seatIndex)
+        ) {
+          showToast("同じ試合内では重複できません");
+          renderResult(state.currentResult);
+          return;
+        }
+
+        if (selected && !canAssignManually(selected, assignmentIndex, seatIndex)) {
+          showToast("出場上限を超えます");
+          renderResult(state.currentResult);
+          return;
+        }
+
+        if (selected) {
+          nextParticipants[seatIndex] = selected;
+        } else {
+          nextParticipants[seatIndex] = null;
+        }
+        assignment.participants = nextParticipants;
+        renderResult(state.currentResult);
+        showToast("変更しました");
+      }
+
+      function canAssignManually(selectedParticipant, assignmentIndex, seatIndex) {
+        const result = state.currentResult;
+        if (!result?.constraints) return true;
+
+        let totalGames = 0;
+        let singleGames = 0;
+        result.assignments.forEach((assignment, currentAssignmentIndex) => {
+          assignment.participants.forEach((participant, currentSeatIndex) => {
+            const isCurrentSeat = currentAssignmentIndex === assignmentIndex && currentSeatIndex === seatIndex;
+            if (isCurrentSeat || participant?.id !== selectedParticipant.id) return;
+            totalGames += 1;
+            if (assignment.gameType === "single") singleGames += 1;
+          });
+        });
+
+        totalGames += 1;
+        if (result.assignments[assignmentIndex]?.gameType === "single") singleGames += 1;
+
+        return (
+          totalGames <= result.constraints.maxGamesPerParticipant &&
+          singleGames <= result.constraints.maxSinglesPerParticipant
+        );
+      }
+
+      async function copyResult() {
+        if (!state.currentResult) {
+          showToast("先に割り振ってください");
+          return;
+        }
+
+        const text = formatResultText(state.currentResult);
+        try {
+          await navigator.clipboard.writeText(text);
+          showToast("コピーしました");
+        } catch {
+          if (fallbackCopyText(text)) {
+            showToast("コピーしました");
+          } else {
+            showToast("コピーできませんでした");
+          }
+        }
+      }
+
+      function fallbackCopyText(text) {
+        const helper = document.createElement("textarea");
+        helper.value = text;
+        helper.setAttribute("readonly", "");
+        helper.style.position = "fixed";
+        helper.style.left = "-9999px";
+        helper.style.top = "0";
+        document.body.append(helper);
+        helper.select();
+
+        try {
+          return document.execCommand("copy");
+        } catch {
+          return false;
+        } finally {
+          helper.remove();
+        }
+      }
+
+      function formatResultText(result) {
+        const lines = [];
+        result.assignments.forEach((assignment) => {
+          lines.push(`${assignment.slotLabel}`);
+          for (let index = 0; index < assignment.capacity; index += 1) {
+            const participant = assignment.participants[index];
+            lines.push(participant ? `- ${participant.name}` : "- 空き");
+          }
+          lines.push("");
+        });
+
+        if (result.waiting.length > 0) {
+          lines.push("待機");
+          result.waiting.forEach((participant) => lines.push(`- ${participant.name}`));
+        }
+
+        return lines.join("\n").trim();
+      }
+
+      function updateCountsAndPreview() {
+        const participants = getParticipants();
+        const format = getFormat();
+        const capacity = format.slots.reduce((total, slot) => total + slot.capacity, 0);
+
+        participantCount.textContent = `${participants.length}名`;
+        capacityCount.textContent = `定員 ${capacity}名`;
+        customFields.style.display = formatSelect.value === "custom" ? "grid" : "none";
+        bowlingFields.classList.toggle("show", format.id === "bowling-4x3");
+        if (format.assignmentMode === "balanced-reuse") {
+          formatPreview.textContent = `${format.slots.length}試合 / 延べ${capacity}出場枠。1人最大${format.constraints.maxGamesPerParticipant}ゲーム、シングル最大${format.constraints.maxSinglesPerParticipant}ゲームまでで、出場回数がなるべく均等になるように割り振ります。`;
+        } else if (format.id === "bowling-4x3") {
+          const laneDetails = format.slots.map((slot) => `${slot.label}:${slot.capacity}名`).join(" / ");
+          formatPreview.textContent = `${format.slots.length}レーン / 合計${capacity}名まで。${laneDetails}`;
+        } else {
+          formatPreview.textContent = `${format.slots.length}枠 / 合計${capacity}名まで。人数が超えた分は待機に入ります。`;
+        }
+      }
+
+      function persist() {
+        localStorage.setItem(storageKeys.participants, participantsInput.value);
+        localStorage.setItem(storageKeys.formatId, formatSelect.value);
+        localStorage.setItem(storageKeys.category, state.activeCategory);
+        localStorage.setItem(
+          storageKeys.bowling,
+          JSON.stringify({
+            laneCount: clampNumber(Number(bowlingLaneCount.value), 1, 32),
+            capacities: getBowlingCapacities(),
+          })
+        );
+        localStorage.setItem(
+          storageKeys.custom,
+          JSON.stringify({
+            slotCount: Number(slotCount.value),
+            slotCapacity: Number(slotCapacity.value),
+          })
+        );
+      }
+
+      function saveCurrentResultToHistory() {
+        if (!state.currentResult) {
+          showToast("先に割り振ってください");
+          return;
+        }
+
+        const format = getFormat();
+        const histories = readHistory();
+        const entry = {
+          id: `history-${Date.now()}`,
+          savedAt: new Date().toISOString(),
+          category: state.activeCategory,
+          formatId: format.id,
+          formatName: format.name,
+          participantsText: participantsInput.value,
+          custom: {
+            slotCount: Number(slotCount.value),
+            slotCapacity: Number(slotCapacity.value),
+          },
+          bowling: {
+            laneCount: clampNumber(Number(bowlingLaneCount.value), 1, 32),
+            capacities: getBowlingCapacities(),
+          },
+          leaguePreferences: readJson(storageKeys.leaguePreferences) || {},
+          result: JSON.parse(JSON.stringify(state.currentResult)),
+        };
+
+        histories.unshift(entry);
+        localStorage.setItem(storageKeys.history, JSON.stringify(histories.slice(0, 30)));
+        renderHistoryList();
+        showToast("履歴に保存しました");
+      }
+
+      function renderHistoryList() {
+        const histories = readHistory();
+        historyList.innerHTML = "";
+
+        if (histories.length === 0) {
+          const empty = document.createElement("div");
+          empty.className = "format-preview";
+          empty.textContent = "保存された履歴はありません。";
+          historyList.append(empty);
+          return;
+        }
+
+        histories.forEach((entry) => {
+          const item = document.createElement("article");
+          item.className = "history-item";
+          const savedAt = new Date(entry.savedAt);
+          const assignedCount = entry.result.assignments.reduce(
+            (total, assignment) => total + assignment.participants.filter(Boolean).length,
+            0
+          );
+          item.innerHTML = `
+            <div class="history-meta">
+              <span class="history-title">${escapeHtml(entry.formatName)}</span>
+              <span>${escapeHtml(formatDateTime(savedAt))}</span>
+              <span>${entry.result.assignments.length}枠 / ${assignedCount}名</span>
+            </div>
+            <div class="history-actions">
+              <button class="btn" type="button" data-history-action="load" data-history-id="${entry.id}">表示して再利用</button>
+              <button class="btn" type="button" data-history-action="delete" data-history-id="${entry.id}">削除</button>
+            </div>
+          `;
+          historyList.append(item);
+        });
+
+        historyList.querySelectorAll("[data-history-action]").forEach((button) => {
+          button.addEventListener("click", () => {
+            if (button.dataset.historyAction === "load") {
+              loadHistory(button.dataset.historyId);
+            } else {
+              deleteHistory(button.dataset.historyId);
+            }
+          });
+        });
+      }
+
+      function loadHistory(historyId) {
+        const entry = readHistory().find((item) => item.id === historyId);
+        if (!entry) return;
+
+        state.activeCategory = entry.category;
+        renderFormatOptions(entry.formatId);
+        participantsInput.value = entry.participantsText || "";
+
+        if (entry.custom) {
+          slotCount.value = entry.custom.slotCount || 4;
+          slotCapacity.value = entry.custom.slotCapacity || 3;
+        }
+        if (entry.bowling) {
+          bowlingLaneCount.value = entry.bowling.laneCount || 4;
+          localStorage.setItem(storageKeys.bowling, JSON.stringify(entry.bowling));
+          renderBowlingLaneInputs();
+        }
+        if (entry.leaguePreferences) {
+          localStorage.setItem(storageKeys.leaguePreferences, JSON.stringify(entry.leaguePreferences));
+        }
+
+        state.currentResult = entry.result;
+        persist();
+        renderLeaguePreferences();
+        updateCountsAndPreview();
+        renderResult(state.currentResult);
+        showToast("履歴を表示しました");
+      }
+
+      function deleteHistory(historyId) {
+        const histories = readHistory().filter((entry) => entry.id !== historyId);
+        localStorage.setItem(storageKeys.history, JSON.stringify(histories));
+        renderHistoryList();
+      }
+
+      function clearHistory() {
+        if (!readHistory().length) return;
+        if (!window.confirm("履歴をすべて削除しますか？")) return;
+        localStorage.setItem(storageKeys.history, "[]");
+        renderHistoryList();
+        showToast("履歴を削除しました");
+      }
+
+      function readHistory() {
+        const histories = readJson(storageKeys.history);
+        return Array.isArray(histories) ? histories : [];
+      }
+
+      function formatDateTime(date) {
+        if (Number.isNaN(date.getTime())) return "";
+        return `${date.getFullYear()}/${String(date.getMonth() + 1).padStart(2, "0")}/${String(date.getDate()).padStart(2, "0")} ${String(date.getHours()).padStart(2, "0")}:${String(date.getMinutes()).padStart(2, "0")}`;
+      }
+
+      function readJson(key) {
+        try {
+          const value = localStorage.getItem(key);
+          return value ? JSON.parse(value) : null;
+        } catch {
+          return null;
+        }
+      }
+
+      function clampNumber(value, min, max) {
+        if (!Number.isFinite(value)) return min;
+        return Math.min(max, Math.max(min, Math.floor(value)));
+      }
+
+      function showToast(message) {
+        toast.textContent = message;
+        toast.classList.add("show");
+        window.clearTimeout(showToast.timer);
+        showToast.timer = window.setTimeout(() => toast.classList.remove("show"), 1800);
+      }
+
+      function escapeHtml(value) {
+        return String(value)
+          .replaceAll("&", "&amp;")
+          .replaceAll("<", "&lt;")
+          .replaceAll(">", "&gt;")
+          .replaceAll('"', "&quot;")
+          .replaceAll("'", "&#039;");
+      }
+    </script>
+  </body>
+</html>
