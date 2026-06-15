@@ -326,6 +326,29 @@
         font-size: 12px;
       }
 
+      .label-row {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 10px;
+        margin-bottom: 8px;
+      }
+
+      .label-row label {
+        margin: 0;
+      }
+
+      .text-btn {
+        min-height: 30px;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        background: #fff;
+        color: var(--muted);
+        padding: 0 10px;
+        font-size: 12px;
+        font-weight: 800;
+      }
+
       .actions {
         display: grid;
         grid-template-columns: 1fr 1fr;
@@ -572,7 +595,10 @@
         <section class="panel controls" aria-label="割り振り設定">
           <div class="section">
             <h2>参加者</h2>
-            <label for="participants">名前を1行に1人ずつ入力</label>
+            <div class="label-row">
+              <label for="participants">名前を1行に1人ずつ入力</label>
+              <button id="clearParticipantsButton" class="text-btn" type="button">クリア</button>
+            </div>
             <textarea id="participants" spellcheck="false"></textarea>
             <div class="meta-row">
               <span id="participantCount">0名</span>
@@ -758,6 +784,7 @@
       document.querySelector("#copyButton").addEventListener("click", copyResult);
       document.querySelector("#saveHistoryButton").addEventListener("click", saveCurrentResultToHistory);
       document.querySelector("#clearHistoryButton").addEventListener("click", clearHistory);
+      document.querySelector("#clearParticipantsButton").addEventListener("click", clearParticipants);
       participantsInput.addEventListener("input", () => {
         state.currentResult = null;
         renderEmptyResult();
@@ -808,9 +835,7 @@
       init();
 
       function init() {
-        participantsInput.value =
-          localStorage.getItem(storageKeys.participants) ||
-          ["田中", "佐藤", "鈴木", "高橋", "伊藤", "渡辺", "山本", "中村", "小林", "加藤", "吉田", "山田"].join("\n");
+        participantsInput.value = localStorage.getItem(storageKeys.participants) || "";
 
         const custom = readJson(storageKeys.custom);
         if (custom) {
@@ -831,6 +856,16 @@
         renderLeaguePreferences();
         renderHistoryList();
         updateCountsAndPreview();
+      }
+
+      function clearParticipants() {
+        participantsInput.value = "";
+        state.currentResult = null;
+        renderEmptyResult();
+        persist();
+        renderLeaguePreferences();
+        updateCountsAndPreview();
+        showToast("参加者をクリアしました");
       }
 
       function renderFormatOptions(preferredFormatId) {
