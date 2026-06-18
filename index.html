@@ -725,6 +725,7 @@
           category: "darts",
           name: "ダーツリーグ戦 13試合",
           assignmentMode: "balanced-reuse",
+          minParticipants: 4,
           constraints: {
             maxGamesPerParticipant: 7,
             maxSinglesPerParticipant: 2,
@@ -737,6 +738,7 @@
           category: "darts",
           name: "関東大会 5試合",
           assignmentMode: "balanced-reuse",
+          minParticipants: 4,
           constraints: {
             maxGamesPerParticipant: 7,
             maxSinglesPerParticipant: 2,
@@ -1184,14 +1186,27 @@
 
       function assignAndRender() {
         const participants = getParticipants();
+        const format = getFormat();
         if (participants.length === 0) {
           showToast("参加者を入力してください");
           return;
         }
+        if (format.minParticipants && participants.length < format.minParticipants) {
+          showToast(`${format.name}は${format.minParticipants}名以上が必要です`);
+          return;
+        }
 
-        state.currentResult = assignParticipants(participants, getFormat());
+        state.currentResult = assignParticipants(participants, format);
         renderResult(state.currentResult);
         persist();
+        scrollToResults();
+      }
+
+      function scrollToResults() {
+        document.querySelector(".results")?.scrollIntoView({
+          behavior: "smooth",
+          block: "start",
+        });
       }
 
       function renderResult(result) {
