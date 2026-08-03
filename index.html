@@ -507,6 +507,58 @@
         font-weight: 800;
       }
 
+      .participant-summary {
+        margin-bottom: 16px;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        background: #fff;
+        overflow: hidden;
+      }
+
+      .participant-summary-title {
+        min-height: 42px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 10px;
+        padding: 0 12px;
+        background: #f9fbfc;
+        border-bottom: 1px solid var(--line);
+        font-weight: 900;
+      }
+
+      .participant-summary-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+        gap: 0;
+      }
+
+      .participant-stat {
+        min-height: 70px;
+        padding: 10px 12px;
+        border-right: 1px solid var(--line);
+        border-bottom: 1px solid var(--line);
+      }
+
+      .participant-stat-name {
+        font-weight: 900;
+        overflow-wrap: anywhere;
+      }
+
+      .participant-stat-main {
+        margin-top: 4px;
+        font-size: 20px;
+        font-weight: 900;
+        color: var(--primary);
+      }
+
+      .participant-stat-sub {
+        margin-top: 4px;
+        color: var(--muted);
+        font-size: 12px;
+        line-height: 1.45;
+      }
+
       .empty {
         min-height: 260px;
         display: grid;
@@ -725,6 +777,7 @@
           category: "darts",
           name: "ダーツリーグ戦 13試合",
           assignmentMode: "balanced-reuse",
+          enforcesSingleLimit: true,
           minParticipants: 4,
           constraints: {
             maxGamesPerParticipant: 7,
@@ -732,6 +785,24 @@
           },
           description: "シングル1名、ダブルス2名、トリオス3名、ガロン4名の固定フォーマットです。",
           slots: createDartsLeagueSlots(),
+        },
+        {
+          id: "darts-playoff",
+          category: "darts",
+          name: "プレイオフ 13試合",
+          assignmentMode: "balanced-reuse",
+          enforcesSingleLimit: true,
+          minParticipants: 4,
+          constraints: {
+            maxGamesPerParticipant: 7,
+            maxSinglesPerParticipant: 2,
+            maxGamesByHalf: {
+              first: 3,
+              second: 4,
+            },
+          },
+          description: "プレイオフ用の固定フォーマットです。前半最大3ゲーム、後半最大4ゲームまでで割り振ります。",
+          slots: createDartsPlayoffSlots(),
         },
         {
           id: "darts-kanto-tournament",
@@ -1000,6 +1071,31 @@
         }));
       }
 
+      function createDartsPlayoffSlots() {
+        return [
+          ["第1戦 701 トリオス", 3, "trios"],
+          ["第2戦 クリケット トリオス", 3, "trios"],
+          ["第3戦 501 ダブルス", 2, "doubles"],
+          ["第4戦 501F ダブルス", 2, "doubles"],
+          ["第5戦 701 シングル", 1, "single"],
+          ["第6戦 クリケット シングル", 1, "single"],
+          ["第7戦 901 トリオス", 3, "trios"],
+          ["第8戦 クリケット トリオス", 3, "trios"],
+          ["第9戦 クリケット ダブルス", 2, "doubles"],
+          ["第10戦 501F ダブルス", 2, "doubles"],
+          ["第11戦 501セパ シングル", 1, "single"],
+          ["第12戦 クリケット シングル", 1, "single"],
+          ["第13戦 1101 ガロン", 4, "gallon"],
+        ].map(([label, capacity, gameType], index) => ({
+          id: `darts-playoff-${index + 1}`,
+          label,
+          capacity,
+          gameType,
+          gameFamily: label.includes("クリケット") ? "cricket" : "01",
+          half: index < 6 ? "first" : "second",
+        }));
+      }
+
       function getParticipants() {
         return participantsInput.value
           .split(/\r?\n/)
@@ -1111,8 +1207,13 @@
         const leaguePreferences = readJson(storageKeys.leaguePreferences) || {};
         const appearanceCounts = new Map(participants.map((participant) => [participant.id, 0]));
         const singleCounts = new Map(participants.map((participant) => [participant.id, 0]));
+        const halfCounts = {
+          first: new Map(participants.map((participant) => [participant.id, 0])),
+          second: new Map(participants.map((participant) => [participant.id, 0])),
+        };
         const maxGames = format.constraints?.maxGamesPerParticipant || Number.POSITIVE_INFINITY;
-        const maxSingles = format.constraints?.maxSinglesPerParticipant || Number.POSITIVE_INFINITY;
+        const maxSingles = getSingleLimit(format);
+        const maxGamesByHalf = format.constraints?.maxGamesByHalf || {};
 
         const assignments = format.slots.map((slot) => {
           const members = [];
@@ -1126,10 +1227,15 @@
                 (participant) =>
                   slot.gameType !== "single" || (singleCounts.get(participant.id) || 0) < maxSingles
               )
+              .filter(
+                (participant) =>
+                  !maxGamesByHalf[slot.half] ||
+                  (halfCounts[slot.half]?.get(participant.id) || 0) < maxGamesByHalf[slot.half]
+              )
               .sort((a, b) => {
                 return (
-                  getLeagueCandidateScore(a, slot, appearanceCounts, singleCounts, leaguePreferences) -
-                  getLeagueCandidateScore(b, slot, appearanceCounts, singleCounts, leaguePreferences)
+                  getLeagueCandidateScore(a, slot, appearanceCounts, singleCounts, halfCounts, leaguePreferences) -
+                  getLeagueCandidateScore(b, slot, appearanceCounts, singleCounts, halfCounts, leaguePreferences)
                 );
               });
 
@@ -1137,6 +1243,7 @@
             const selected = candidates[0];
             members.push(selected);
             appearanceCounts.set(selected.id, (appearanceCounts.get(selected.id) || 0) + 1);
+            halfCounts[slot.half]?.set(selected.id, (halfCounts[slot.half].get(selected.id) || 0) + 1);
             if (slot.gameType === "single") {
               singleCounts.set(selected.id, (singleCounts.get(selected.id) || 0) + 1);
             }
@@ -1147,6 +1254,7 @@
             slotLabel: slot.label,
             capacity: slot.capacity,
             gameType: slot.gameType,
+            half: slot.half,
             participants: members,
           };
         });
@@ -1155,20 +1263,33 @@
           assignments,
           waiting: [],
           assignmentMode: format.assignmentMode,
+          enforcesSingleLimit: format.enforcesSingleLimit,
           constraints: format.constraints,
           appearanceCounts: Object.fromEntries(appearanceCounts),
           singleCounts: Object.fromEntries(singleCounts),
+          halfCounts: {
+            first: Object.fromEntries(halfCounts.first),
+            second: Object.fromEntries(halfCounts.second),
+          },
           totalCapacity: format.slots.reduce((total, slot) => total + slot.capacity, 0),
         };
       }
 
-      function getLeagueCandidateScore(participant, slot, appearanceCounts, singleCounts, leaguePreferences) {
+      function getSingleLimit(formatOrResult) {
+        if (!formatOrResult?.enforcesSingleLimit && !formatOrResult?.constraints?.maxSinglesPerParticipant) {
+          return Number.POSITIVE_INFINITY;
+        }
+        return formatOrResult.constraints?.maxSinglesPerParticipant || Number.POSITIVE_INFINITY;
+      }
+
+      function getLeagueCandidateScore(participant, slot, appearanceCounts, singleCounts, halfCounts, leaguePreferences) {
         const preference = leaguePreferences[participant.name]?.[slot.half] || "neutral";
         const preferenceBonus = preference === slot.gameFamily ? 0.65 : 0;
         const mismatchPenalty = preference !== "neutral" && preference !== slot.gameFamily ? 0.2 : 0;
 
         return (
           (appearanceCounts.get(participant.id) || 0) * 10 +
+          (halfCounts[slot.half]?.get(participant.id) || 0) * 4 +
           (singleCounts.get(participant.id) || 0) * 2 +
           mismatchPenalty -
           preferenceBonus
@@ -1213,6 +1334,8 @@
         resultArea.className = "";
         resultArea.innerHTML = "";
 
+        resultArea.append(createParticipantSummary(result));
+
         const cards = document.createElement("div");
         cards.className = "cards";
         result.assignments.forEach((assignment, assignmentIndex) => {
@@ -1240,6 +1363,79 @@
         } else {
           resultSummary.textContent = `${assignedCount}名を割り振り、${result.waiting.length}名が待機です。`;
         }
+      }
+
+      function createParticipantSummary(result) {
+        const summary = document.createElement("section");
+        summary.className = "participant-summary";
+
+        const title = document.createElement("div");
+        title.className = "participant-summary-title";
+        title.innerHTML = `<span>個人別 出場数</span><span>${getParticipants().length}名</span>`;
+        summary.append(title);
+
+        const grid = document.createElement("div");
+        grid.className = "participant-summary-grid";
+        buildParticipantStats(result).forEach((stat) => {
+          const item = document.createElement("div");
+          item.className = "participant-stat";
+
+          const details = result.assignmentMode === "balanced-reuse"
+            ? `シングル ${stat.singles} / 前半 ${stat.firstHalf} / 後半 ${stat.secondHalf}`
+            : `割り振り ${stat.total} / 待機 ${stat.waiting}`;
+
+          item.innerHTML = `
+            <div class="participant-stat-name">${escapeHtml(stat.name)}</div>
+            <div class="participant-stat-main">${stat.total}試合</div>
+            <div class="participant-stat-sub">${escapeHtml(details)}</div>
+          `;
+          grid.append(item);
+        });
+        summary.append(grid);
+        return summary;
+      }
+
+      function buildParticipantStats(result) {
+        const stats = new Map(
+          getParticipants().map((participant) => [
+            participant.id,
+            {
+              id: participant.id,
+              name: participant.name,
+              total: 0,
+              singles: 0,
+              firstHalf: 0,
+              secondHalf: 0,
+              waiting: 0,
+            },
+          ])
+        );
+
+        result.assignments.forEach((assignment) => {
+          assignment.participants.filter(Boolean).forEach((participant) => {
+            const stat = stats.get(participant.id) || {
+              id: participant.id,
+              name: participant.name,
+              total: 0,
+              singles: 0,
+              firstHalf: 0,
+              secondHalf: 0,
+              waiting: 0,
+            };
+            stat.total += 1;
+            if (assignment.gameType === "single") stat.singles += 1;
+            if (assignment.half === "first") stat.firstHalf += 1;
+            if (assignment.half === "second") stat.secondHalf += 1;
+            stats.set(participant.id, stat);
+          });
+        });
+
+        result.waiting.forEach((participant) => {
+          const stat = stats.get(participant.id);
+          if (stat) stat.waiting += 1;
+        });
+
+        return [...stats.values()].sort((a, b) => b.total - a.total || a.name.localeCompare(b.name, "ja"));
       }
 
       function renderEmptyResult() {
@@ -1353,21 +1549,32 @@
 
         let totalGames = 0;
         let singleGames = 0;
+        const halfGames = {
+          first: 0,
+          second: 0,
+        };
         result.assignments.forEach((assignment, currentAssignmentIndex) => {
           assignment.participants.forEach((participant, currentSeatIndex) => {
             const isCurrentSeat = currentAssignmentIndex === assignmentIndex && currentSeatIndex === seatIndex;
             if (isCurrentSeat || participant?.id !== selectedParticipant.id) return;
             totalGames += 1;
+            if (assignment.half) halfGames[assignment.half] += 1;
             if (assignment.gameType === "single") singleGames += 1;
           });
         });
 
+        const targetAssignment = result.assignments[assignmentIndex];
         totalGames += 1;
-        if (result.assignments[assignmentIndex]?.gameType === "single") singleGames += 1;
+        if (targetAssignment?.half) halfGames[targetAssignment.half] += 1;
+        if (targetAssignment?.gameType === "single") singleGames += 1;
+
+        const halfLimits = result.constraints.maxGamesByHalf || {};
+        const singleLimit = getSingleLimit(result);
 
         return (
           totalGames <= result.constraints.maxGamesPerParticipant &&
-          singleGames <= result.constraints.maxSinglesPerParticipant
+          singleGames <= singleLimit &&
+          Object.entries(halfLimits).every(([half, limit]) => halfGames[half] <= limit)
         );
       }
 
@@ -1425,6 +1632,16 @@
           result.waiting.forEach((participant) => lines.push(`- ${participant.name}`));
         }
 
+        lines.push("");
+        lines.push("個人別 出場数");
+        buildParticipantStats(result).forEach((stat) => {
+          if (result.assignmentMode === "balanced-reuse") {
+            lines.push(`- ${stat.name}: ${stat.total}試合（シングル${stat.singles} / 前半${stat.firstHalf} / 後半${stat.secondHalf}）`);
+          } else {
+            lines.push(`- ${stat.name}: ${stat.total}試合（待機${stat.waiting}）`);
+          }
+        });
+
         return lines.join("\n").trim();
       }
 
@@ -1438,7 +1655,10 @@
         customFields.style.display = formatSelect.value === "custom" ? "grid" : "none";
         bowlingFields.classList.toggle("show", format.id === "bowling-4x3");
         if (format.assignmentMode === "balanced-reuse") {
-          formatPreview.textContent = `${format.slots.length}試合 / 延べ${capacity}出場枠。1人最大${format.constraints.maxGamesPerParticipant}ゲーム、シングル最大${format.constraints.maxSinglesPerParticipant}ゲームまでで、出場回数がなるべく均等になるように割り振ります。`;
+          const halfText = format.constraints.maxGamesByHalf
+            ? ` 前半最大${format.constraints.maxGamesByHalf.first}ゲーム、後半最大${format.constraints.maxGamesByHalf.second}ゲーム。`
+            : "";
+          formatPreview.textContent = `${format.slots.length}試合 / 延べ${capacity}出場枠。1人最大${format.constraints.maxGamesPerParticipant}ゲーム、シングル最大${format.constraints.maxSinglesPerParticipant}ゲームまで。${halfText}出場回数がなるべく均等になるように割り振ります。`;
         } else if (format.id === "bowling-4x3") {
           const laneDetails = format.slots.map((slot) => `${slot.label}:${slot.capacity}名`).join(" / ");
           formatPreview.textContent = `${format.slots.length}レーン / 合計${capacity}名まで。${laneDetails}`;
