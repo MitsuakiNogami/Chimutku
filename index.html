@@ -1974,7 +1974,7 @@
             <div class="analysis-card">
               <div class="analysis-label">集計対象</div>
               <div class="analysis-value">${data.sourceCount}件</div>
-              <div class="analysis-note">保存履歴と現在表示中の未保存結果を集計します。</div>
+              <div class="analysis-note">保存済み履歴を集計します。</div>
             </div>
             <div class="analysis-card">
               <div class="analysis-label">最高勝率の組み合わせ</div>
@@ -2038,14 +2038,6 @@
           result: JSON.parse(JSON.stringify(entry.result || { assignments: [], waiting: [] })),
           resultTags: entry.resultTags?.length ? entry.resultTags : entry.result?.resultTags || [],
         }));
-
-        if (state.currentResult && !state.loadedHistoryId) {
-          sources.push({
-            id: "current",
-            result: JSON.parse(JSON.stringify(state.currentResult)),
-            resultTags: getResultTags(),
-          });
-        }
 
         let wins = 0;
         let totalGames = 0;
@@ -2494,7 +2486,11 @@
         if (!readHistory().length) return;
         if (!window.confirm("履歴をすべて削除しますか？")) return;
         localStorage.setItem(storageKeys.history, "[]");
+        state.currentResult = null;
+        state.loadedHistoryId = null;
+        state.analysisTagFilter = "__all__";
         renderHistoryList();
+        renderEmptyResult();
         showToast("履歴を削除しました");
       }
 
