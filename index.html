@@ -326,6 +326,23 @@
         font-size: 12px;
       }
 
+      .history-tag-edit {
+        margin-top: 10px;
+      }
+
+      .history-tag-edit label {
+        margin-bottom: 6px;
+        color: var(--muted);
+        font-size: 12px;
+      }
+
+      .history-tag-input {
+        width: 100%;
+        min-height: 34px;
+        border-radius: 8px;
+        font-size: 13px;
+      }
+
       .label-row {
         display: flex;
         align-items: center;
@@ -604,6 +621,11 @@
         min-height: 34px;
       }
 
+      .tag-panel > .tag-input {
+        width: calc(100% - 24px);
+        margin: 0 12px 12px;
+      }
+
       .outcome-controls {
         display: grid;
         grid-template-columns: 72px 1fr;
@@ -699,6 +721,40 @@
         border: 1px solid var(--line);
         border-radius: 8px;
         background: #fff;
+      }
+
+      .analysis-filter-row {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+        align-items: center;
+        justify-content: space-between;
+        margin: 0 0 10px;
+      }
+
+      .analysis-filter-row h3 {
+        margin: 0;
+      }
+
+      .analysis-filter {
+        display: flex;
+        gap: 8px;
+        align-items: center;
+      }
+
+      .analysis-filter label {
+        margin: 0;
+        color: var(--muted);
+        font-size: 12px;
+        font-weight: 800;
+      }
+
+      .analysis-filter select {
+        min-width: 150px;
+        height: 36px;
+        border-radius: 8px;
+        background: #eef4f7;
+        font-weight: 800;
       }
 
       .analysis-table {
@@ -828,9 +884,10 @@
               <span id="participantCount">0名</span>
               <span id="capacityCount">定員 12名</span>
             </div>
-            <div id="participantTags" class="tag-panel" aria-label="参加者タグ設定">
-              <div class="tag-panel-head">タグ設定（カンマ・スペース区切り）</div>
-              <div id="participantTagRows"></div>
+            <div id="resultTags" class="tag-panel" aria-label="抽選結果タグ設定">
+              <div class="tag-panel-head">抽選結果タグ（分析時にタグ単位で集約）</div>
+              <div class="tag-empty">例: 2026春 Season1。履歴保存後、分析タブで同じタグの結果をまとめて集計できます。スペースは区切りとして扱うため、1つのタグ名にはスペースを入れないでください。</div>
+              <input id="resultTagInput" class="tag-input" type="text" placeholder="例: 2026春 Season1" />
             </div>
           </div>
 
@@ -941,7 +998,8 @@
         category: "member-assignment.category",
         custom: "member-assignment.customFormat",
         leaguePreferences: "member-assignment.leaguePreferences",
-        participantTags: "member-assignment.participantTags",
+        resultTags: "member-assignment.resultTags",
+        lastResultTags: "member-assignment.lastResultTags",
         bowling: "member-assignment.bowlingFormat",
         history: "member-assignment.history",
       };
@@ -1027,6 +1085,7 @@
         activeCategory: "bowling",
         activeView: "result",
         loadedHistoryId: null,
+        analysisTagFilter: "__all__",
       };
 
       const participantsInput = document.querySelector("#participants");
@@ -1041,7 +1100,7 @@
       const bowlingLaneCount = document.querySelector("#bowlingLaneCount");
       const laneCapacityList = document.querySelector("#laneCapacityList");
       const formatPreview = document.querySelector("#formatPreview");
-      const participantTagRows = document.querySelector("#participantTagRows");
+      const resultTagInput = document.querySelector("#resultTagInput");
       const leaguePreferences = document.querySelector("#leaguePreferences");
       const leaguePreferenceRows = document.querySelector("#leaguePreferenceRows");
       const resultArea = document.querySelector("#resultArea");
@@ -1058,12 +1117,16 @@
       document.querySelector("#saveHistoryButton").addEventListener("click", saveCurrentResultToHistory);
       document.querySelector("#clearHistoryButton").addEventListener("click", clearHistory);
       document.querySelector("#clearParticipantsButton").addEventListener("click", clearParticipants);
+      resultTagInput.addEventListener("input", () => {
+        persist();
+        syncCurrentResultTags();
+        renderAnalysis();
+      });
       participantsInput.addEventListener("input", () => {
         state.currentResult = null;
         state.loadedHistoryId = null;
         renderEmptyResult();
         persist();
-        renderParticipantTags();
         renderLeaguePreferences();
         updateCountsAndPreview();
       });
@@ -1133,9 +1196,10 @@
         const savedFormatId = localStorage.getItem(storageKeys.formatId) || "bowling-4x3";
         const savedTemplate = templates.find((template) => template.id === savedFormatId) || templates[0];
         state.activeCategory = localStorage.getItem(storageKeys.category) || savedTemplate.category;
+        resultTagInput.value =
+          localStorage.getItem(storageKeys.resultTags) || localStorage.getItem(storageKeys.lastResultTags) || "";
         renderFormatOptions(savedTemplate.id);
         renderBowlingLaneInputs();
-        renderParticipantTags();
         renderLeaguePreferences();
         renderHistoryList();
         renderAnalysis();
@@ -1146,10 +1210,8 @@
         participantsInput.value = "";
         state.currentResult = null;
         state.loadedHistoryId = null;
-        localStorage.setItem(storageKeys.participantTags, "{}");
         renderEmptyResult();
         persist();
-        renderParticipantTags();
         renderLeaguePreferences();
         updateCountsAndPreview();
         showToast("参加者をクリアしました");
@@ -1300,12 +1362,11 @@
       }
 
       function getParticipants() {
-        const tagMap = readParticipantTagMap();
         return getParticipantNames().map((name, index) => ({
             id: `p-${index}-${name}`,
             name,
             active: true,
-            tags: parseTags(tagMap[name] || ""),
+            tags: [],
           }));
       }
 
@@ -1320,66 +1381,14 @@
         return [...new Set(String(value || "").split(/[,\s、]+/).map((tag) => tag.trim()).filter(Boolean))];
       }
 
-      function readParticipantTagMap() {
-        const tagMap = readJson(storageKeys.participantTags);
-        return tagMap && typeof tagMap === "object" && !Array.isArray(tagMap) ? tagMap : {};
+      function getResultTags() {
+        return parseTags(resultTagInput.value);
       }
 
-      function writeParticipantTag(name, value) {
-        const nextMap = readParticipantTagMap();
-        if (value.trim()) {
-          nextMap[name] = value.trim();
-        } else {
-          delete nextMap[name];
-        }
-        localStorage.setItem(storageKeys.participantTags, JSON.stringify(nextMap));
-        syncCurrentResultParticipantTags();
-        renderAnalysis();
-      }
-
-      function renderParticipantTags() {
-        const names = getParticipantNames();
-        const tagMap = readParticipantTagMap();
-        participantTagRows.innerHTML = "";
-
-        if (names.length === 0) {
-          const empty = document.createElement("div");
-          empty.className = "tag-empty";
-          empty.textContent = "参加者を入力すると、タグを設定できます。";
-          participantTagRows.append(empty);
-          return;
-        }
-
-        names.forEach((name) => {
-          const row = document.createElement("div");
-          row.className = "tag-row";
-
-          const label = document.createElement("div");
-          label.className = "tag-name";
-          label.textContent = name;
-
-          const input = document.createElement("input");
-          input.className = "tag-input";
-          input.type = "text";
-          input.placeholder = "例: Aチーム 01得意";
-          input.value = tagMap[name] || "";
-          input.addEventListener("input", () => writeParticipantTag(name, input.value));
-
-          row.append(label, input);
-          participantTagRows.append(row);
-        });
-      }
-
-      function syncCurrentResultParticipantTags() {
+      function syncCurrentResultTags() {
         if (!state.currentResult) return;
-        const latest = new Map(getParticipants().map((participant) => [participant.id, participant]));
-        const syncParticipant = (participant) => participant ? { ...participant, tags: latest.get(participant.id)?.tags || [] } : null;
-
-        state.currentResult.assignments.forEach((assignment) => {
-          assignment.participants = assignment.participants.map(syncParticipant);
-        });
-        state.currentResult.waiting = state.currentResult.waiting.map(syncParticipant).filter(Boolean);
-        updateLoadedHistoryResult();
+        state.currentResult.resultTags = getResultTags();
+        updateLoadedHistoryResult({ refreshHistoryList: false });
       }
 
       function setActiveView(view) {
@@ -1604,6 +1613,7 @@
 
         state.loadedHistoryId = null;
         state.currentResult = assignParticipants(participants, format);
+        state.currentResult.resultTags = getResultTags();
         renderResult(state.currentResult);
         persist();
         scrollToResults();
@@ -1955,18 +1965,32 @@
           <section>
             <h3>タグ別勝率</h3>
             ${createAnalysisTable(
-              ["タグ", "勝率", "勝敗", "出場回数"],
+              ["タグ", "勝率", "勝敗", "試合数"],
               data.tagStats.map((stat) => [
                 escapeHtml(stat.label),
                 formatPercent(stat.wins, stat.total),
                 `${stat.wins}勝 / ${stat.total - stat.wins}敗`,
-                `${stat.total}回`,
+                `${stat.total}試合`,
               ]),
-              "タグが登録された出場データがありません。"
+              "タグが登録された勝敗データがありません。"
             )}
           </section>
           <section>
-            <h3>組み合わせ別勝率</h3>
+            <div class="analysis-filter-row">
+              <h3>組み合わせ別勝率</h3>
+              <div class="analysis-filter">
+                <label for="comboTagFilter">タグ</label>
+                <select id="comboTagFilter">
+                  <option value="__all__">すべて</option>
+                  ${data.availableTagFilters
+                    .map(
+                      (filter) =>
+                        `<option value="${escapeHtml(filter.value)}"${filter.value === data.selectedTagFilter ? " selected" : ""}>${escapeHtml(filter.label)}</option>`
+                    )
+                    .join("")}
+                </select>
+              </div>
+            </div>
             ${createAnalysisTable(
               ["組み合わせ", "勝率", "勝敗", "試合数"],
               data.comboStats.map((stat) => [
@@ -1979,19 +2003,27 @@
             )}
           </section>
         `;
+
+        const comboTagFilter = analysisArea.querySelector("#comboTagFilter");
+        comboTagFilter?.addEventListener("change", () => {
+          state.analysisTagFilter = comboTagFilter.value;
+          renderAnalysis();
+        });
       }
 
       function buildAnalysisData() {
         const histories = readHistory();
         const sources = histories.map((entry) => ({
           id: entry.id,
-          result: hydrateResultTags(entry.result, entry.participantTags || {}),
+          result: JSON.parse(JSON.stringify(entry.result || { assignments: [], waiting: [] })),
+          resultTags: entry.resultTags?.length ? entry.resultTags : entry.result?.resultTags || [],
         }));
 
         if (state.currentResult && !state.loadedHistoryId) {
           sources.push({
             id: "current",
             result: JSON.parse(JSON.stringify(state.currentResult)),
+            resultTags: getResultTags(),
           });
         }
 
@@ -1999,8 +2031,19 @@
         let totalGames = 0;
         const tagStats = new Map();
         const comboStats = new Map();
+        const availableTags = new Set();
+        const availableTagCombos = new Map();
 
         sources.forEach((source) => {
+          (source.resultTags || []).forEach((tag) => availableTags.add(tag));
+          if ((source.resultTags || []).length > 1) {
+            const comboValue = createTagComboFilterValue(source.resultTags);
+            availableTagCombos.set(comboValue, {
+              value: comboValue,
+              label: source.resultTags.join(" "),
+              tags: source.resultTags,
+            });
+          }
           source.result.assignments.forEach((assignment) => {
             if (!["win", "loss"].includes(assignment.outcome)) return;
             const members = assignment.participants.filter(Boolean);
@@ -2010,15 +2053,16 @@
             const isWin = assignment.outcome === "win";
             if (isWin) wins += 1;
 
-            members.forEach((participant) => {
-              const tags = participant.tags?.length ? participant.tags : ["タグなし"];
-              tags.forEach((tag) => {
-                const stat = tagStats.get(tag) || { label: tag, wins: 0, total: 0 };
-                stat.total += 1;
-                if (isWin) stat.wins += 1;
-                tagStats.set(tag, stat);
-              });
+            const tags = source.resultTags?.length ? source.resultTags : ["タグなし"];
+            tags.forEach((tag) => {
+              const stat = tagStats.get(tag) || { label: tag, wins: 0, total: 0 };
+              stat.total += 1;
+              if (isWin) stat.wins += 1;
+              tagStats.set(tag, stat);
             });
+
+            const shouldIncludeCombo = matchesAnalysisTagFilter(source.resultTags || [], state.analysisTagFilter);
+            if (!shouldIncludeCombo) return;
 
             const label = members.map((participant) => participant.name).sort((a, b) => a.localeCompare(b, "ja")).join(" + ");
             const combo = comboStats.get(label) || { label, wins: 0, total: 0 };
@@ -2028,27 +2072,51 @@
           });
         });
 
+        const sortedAvailableTags = [...availableTags].sort((a, b) => a.localeCompare(b, "ja"));
+        const availableTagFilters = [
+          ...sortedAvailableTags.map((tag) => ({ value: tag, label: tag, tags: [tag] })),
+          ...[...availableTagCombos.values()].sort((a, b) => a.label.localeCompare(b.label, "ja")),
+        ];
+        if (
+          state.analysisTagFilter !== "__all__" &&
+          !availableTagFilters.some((filter) => filter.value === state.analysisTagFilter)
+        ) {
+          state.analysisTagFilter = "__all__";
+        }
+
         return {
           wins,
           totalGames,
           sourceCount: sources.length,
+          availableTags: sortedAvailableTags,
+          availableTagFilters,
+          selectedTagFilter: state.analysisTagFilter,
           tagStats: sortAnalysisStats([...tagStats.values()]),
           comboStats: sortAnalysisStats([...comboStats.values()]),
         };
       }
 
-      function hydrateResultTags(result, participantTags) {
-        const nextResult = JSON.parse(JSON.stringify(result || { assignments: [], waiting: [] }));
-        nextResult.assignments = (nextResult.assignments || []).map((assignment) => ({
-          ...assignment,
-          participants: (assignment.participants || []).map((participant) =>
-            participant ? { ...participant, tags: participant.tags || parseTags(participantTags[participant.name] || "") } : null
-          ),
-        }));
-        nextResult.waiting = (nextResult.waiting || []).map((participant) =>
-          participant ? { ...participant, tags: participant.tags || parseTags(participantTags[participant.name] || "") } : null
-        );
-        return nextResult;
+      function createTagComboFilterValue(tags) {
+        return `__combo__:${tags.map((tag) => encodeURIComponent(tag)).join("|")}`;
+      }
+
+      function parseTagComboFilterValue(value) {
+        return value.startsWith("__combo__:")
+          ? value
+              .slice("__combo__:".length)
+              .split("|")
+              .filter(Boolean)
+              .map((tag) => decodeURIComponent(tag))
+          : null;
+      }
+
+      function matchesAnalysisTagFilter(sourceTags, filterValue) {
+        if (filterValue === "__all__") return true;
+        const comboTags = parseTagComboFilterValue(filterValue);
+        if (comboTags) {
+          return comboTags.every((tag) => sourceTags.includes(tag));
+        }
+        return sourceTags.includes(filterValue);
       }
 
       function sortAnalysisStats(stats) {
@@ -2185,6 +2253,10 @@
 
       function persist() {
         localStorage.setItem(storageKeys.participants, participantsInput.value);
+        localStorage.setItem(storageKeys.resultTags, resultTagInput.value);
+        if (resultTagInput.value.trim()) {
+          localStorage.setItem(storageKeys.lastResultTags, resultTagInput.value.trim());
+        }
         localStorage.setItem(storageKeys.formatId, formatSelect.value);
         localStorage.setItem(storageKeys.category, state.activeCategory);
         localStorage.setItem(
@@ -2218,7 +2290,7 @@
           formatId: format.id,
           formatName: format.name,
           participantsText: participantsInput.value,
-          participantTags: readParticipantTagMap(),
+          resultTags: getResultTags(),
           custom: {
             slotCount: Number(slotCount.value),
             slotCapacity: Number(slotCapacity.value),
@@ -2228,7 +2300,10 @@
             capacities: getBowlingCapacities(),
           },
           leaguePreferences: readJson(storageKeys.leaguePreferences) || {},
-          result: JSON.parse(JSON.stringify(state.currentResult)),
+          result: {
+            ...JSON.parse(JSON.stringify(state.currentResult)),
+            resultTags: getResultTags(),
+          },
         };
 
         const existingIndex = histories.findIndex((history) => history.id === entry.id);
@@ -2237,6 +2312,9 @@
         }
         histories.unshift(entry);
         state.loadedHistoryId = entry.id;
+        if (resultTagInput.value.trim()) {
+          localStorage.setItem(storageKeys.lastResultTags, resultTagInput.value.trim());
+        }
         localStorage.setItem(storageKeys.history, JSON.stringify(histories.slice(0, 30)));
         renderHistoryList();
         showToast("履歴に保存しました");
@@ -2258,6 +2336,7 @@
           const item = document.createElement("article");
           item.className = "history-item";
           const savedAt = new Date(entry.savedAt);
+          const tags = entry.resultTags?.length ? entry.resultTags : entry.result?.resultTags || [];
           const assignedCount = entry.result.assignments.reduce(
             (total, assignment) => total + assignment.participants.filter(Boolean).length,
             0
@@ -2266,7 +2345,12 @@
             <div class="history-meta">
               <span class="history-title">${escapeHtml(entry.formatName)}</span>
               <span>${escapeHtml(formatDateTime(savedAt))}</span>
+              ${tags.length ? `<span>${escapeHtml(tags.join(" / "))}</span>` : ""}
               <span>${entry.result.assignments.length}枠 / ${assignedCount}名</span>
+            </div>
+            <div class="history-tag-edit">
+              <label for="history-tags-${entry.id}">履歴タグ</label>
+              <input id="history-tags-${entry.id}" class="history-tag-input" type="text" value="${escapeHtml(tags.join(" "))}" data-history-tags-id="${entry.id}" placeholder="例: 2026春 Season1" />
             </div>
             <div class="history-actions">
               <button class="btn" type="button" data-history-action="load" data-history-id="${entry.id}">表示して再利用</button>
@@ -2285,6 +2369,11 @@
             }
           });
         });
+        historyList.querySelectorAll("[data-history-tags-id]").forEach((input) => {
+          input.addEventListener("change", () => {
+            updateHistoryTags(input.dataset.historyTagsId, input.value);
+          });
+        });
       }
 
       function loadHistory(historyId) {
@@ -2295,7 +2384,7 @@
         renderFormatOptions(entry.formatId);
         participantsInput.value = entry.participantsText || "";
         state.loadedHistoryId = entry.id;
-        localStorage.setItem(storageKeys.participantTags, JSON.stringify(entry.participantTags || {}));
+        resultTagInput.value = (entry.resultTags?.length ? entry.resultTags : entry.result?.resultTags || []).join(" ");
 
         if (entry.custom) {
           slotCount.value = entry.custom.slotCount || 4;
@@ -2310,16 +2399,50 @@
           localStorage.setItem(storageKeys.leaguePreferences, JSON.stringify(entry.leaguePreferences));
         }
 
-        state.currentResult = entry.result;
+        state.currentResult = {
+          ...entry.result,
+          resultTags: getResultTags(),
+        };
         persist();
-        renderParticipantTags();
         renderLeaguePreferences();
         updateCountsAndPreview();
         renderResult(state.currentResult);
         showToast("履歴を表示しました");
       }
 
-      function updateLoadedHistoryResult() {
+      function updateHistoryTags(historyId, rawTags) {
+        const histories = readHistory();
+        const index = histories.findIndex((entry) => entry.id === historyId);
+        if (index < 0) return;
+
+        const tags = parseTags(rawTags);
+        histories[index] = {
+          ...histories[index],
+          resultTags: tags,
+          result: {
+            ...histories[index].result,
+            resultTags: tags,
+          },
+        };
+        localStorage.setItem(storageKeys.history, JSON.stringify(histories));
+
+        if (rawTags.trim()) {
+          localStorage.setItem(storageKeys.lastResultTags, rawTags.trim());
+        }
+
+        if (state.loadedHistoryId === historyId && state.currentResult) {
+          resultTagInput.value = tags.join(" ");
+          state.currentResult.resultTags = tags;
+          persist();
+          renderResult(state.currentResult);
+        } else {
+          renderHistoryList();
+          renderAnalysis();
+        }
+        showToast("履歴タグを更新しました");
+      }
+
+      function updateLoadedHistoryResult(options = {}) {
         if (!state.loadedHistoryId || !state.currentResult) return;
 
         const histories = readHistory();
@@ -2328,11 +2451,17 @@
 
         histories[index] = {
           ...histories[index],
-          participantTags: readParticipantTagMap(),
-          result: JSON.parse(JSON.stringify(state.currentResult)),
+          resultTags: getResultTags(),
+          result: {
+            ...JSON.parse(JSON.stringify(state.currentResult)),
+            resultTags: getResultTags(),
+          },
         };
         localStorage.setItem(storageKeys.history, JSON.stringify(histories));
-        renderHistoryList();
+        if (options.refreshHistoryList !== false) {
+          renderHistoryList();
+        }
+        renderAnalysis();
       }
 
       function deleteHistory(historyId) {
