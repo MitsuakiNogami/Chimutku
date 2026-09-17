@@ -288,6 +288,17 @@
         margin: 0;
       }
 
+      .history-tools {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        justify-content: flex-end;
+      }
+
+      .hidden-file-input {
+        display: none;
+      }
+
       .history-list {
         display: grid;
         gap: 10px;
@@ -966,8 +977,13 @@
             <div class="history-panel">
               <div class="history-head">
                 <h2>履歴</h2>
-                <button id="clearHistoryButton" class="btn" type="button">全削除</button>
+                <div class="history-tools">
+                  <button id="exportDataButton" class="btn" type="button">書き出し</button>
+                  <button id="importDataButton" class="btn" type="button">読み込み</button>
+                  <button id="clearHistoryButton" class="btn" type="button">全削除</button>
+                </div>
               </div>
+              <input id="importDataInput" class="hidden-file-input" type="file" accept="application/json,.json" />
               <div id="historyList" class="history-list"></div>
             </div>
           </div>
@@ -1110,6 +1126,7 @@
       const resultSummary = document.querySelector("#resultSummary");
       const toast = document.querySelector("#toast");
       const historyList = document.querySelector("#historyList");
+      const importDataInput = document.querySelector("#importDataInput");
 
       document.querySelector("#assignButton").addEventListener("click", assignAndRender);
       document.querySelector("#rerollButton").addEventListener("click", assignAndRender);
@@ -1117,6 +1134,9 @@
       document.querySelector("#saveHistoryButton").addEventListener("click", saveCurrentResultToHistory);
       document.querySelector("#clearHistoryButton").addEventListener("click", clearHistory);
       document.querySelector("#clearParticipantsButton").addEventListener("click", clearParticipants);
+      document.querySelector("#exportDataButton").addEventListener("click", exportAppData);
+      document.querySelector("#importDataButton").addEventListener("click", () => importDataInput.click());
+      importDataInput.addEventListener("change", importAppData);
       resultTagInput.addEventListener("input", () => {
         persist();
         syncCurrentResultTags();
@@ -2476,6 +2496,65 @@
         localStorage.setItem(storageKeys.history, "[]");
         renderHistoryList();
         showToast("履歴を削除しました");
+      }
+
+      function exportAppData() {
+        persist();
+        const payload = {
+          app: "member-assignment",
+          version: 1,
+          exportedAt: new Date().toISOString(),
+          data: Object.fromEntries(Object.entries(storageKeys).map(([name, key]) => [name, localStorage.getItem(key)])),
+        };
+        const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement("a");
+        const stamp = new Date().toISOString().slice(0, 10).replaceAll("-", "");
+        link.href = url;
+        link.download = `member-assignment-backup-${stamp}.json`;
+        document.body.append(link);
+        link.click();
+        link.remove();
+        URL.revokeObjectURL(url);
+        showToast("データを書き出しました");
+      }
+
+      function importAppData(event) {
+        const file = event.target.files?.[0];
+        if (!file) return;
+
+        const reader = new FileReader();
+        reader.onload = () => {
+          try {
+            const payload = JSON.parse(String(reader.result || ""));
+            if (payload?.app !== "member-assignment" || !payload.data || typeof payload.data !== "object") {
+              showToast("読み込めないファイルです");
+              return;
+            }
+            if (!window.confirm("現在の履歴と設定を、読み込んだデータで上書きしますか？")) return;
+
+            Object.entries(storageKeys).forEach(([name, key]) => {
+              const value = payload.data[name];
+              if (typeof value === "string") {
+                localStorage.setItem(key, value);
+              } else {
+                localStorage.removeItem(key);
+              }
+            });
+
+            state.currentResult = null;
+            state.loadedHistoryId = null;
+            state.analysisTagFilter = "__all__";
+            init();
+            renderEmptyResult();
+            showToast("データを読み込みました");
+          } catch {
+            showToast("読み込みに失敗しました");
+          } finally {
+            importDataInput.value = "";
+          }
+        };
+        reader.readAsText(file);
       }
 
       function readHistory() {
