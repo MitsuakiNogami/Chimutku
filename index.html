@@ -559,6 +559,178 @@
         line-height: 1.45;
       }
 
+      .tag-panel {
+        margin-top: 12px;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        background: #fff;
+        overflow: hidden;
+      }
+
+      .tag-panel-head {
+        padding: 9px 12px;
+        background: #f9fbfc;
+        border-bottom: 1px solid var(--line);
+        font-size: 12px;
+        font-weight: 900;
+        color: var(--muted);
+      }
+
+      .tag-empty {
+        padding: 12px;
+        color: var(--muted);
+        font-size: 13px;
+      }
+
+      .tag-row {
+        display: grid;
+        grid-template-columns: minmax(90px, 0.9fr) minmax(160px, 1.6fr);
+        gap: 10px;
+        align-items: center;
+        padding: 10px 12px;
+        border-bottom: 1px solid var(--line);
+      }
+
+      .tag-row:last-child {
+        border-bottom: 0;
+      }
+
+      .tag-name {
+        font-weight: 900;
+        overflow-wrap: anywhere;
+      }
+
+      .tag-input {
+        min-height: 34px;
+      }
+
+      .outcome-controls {
+        display: grid;
+        grid-template-columns: 72px 1fr;
+        gap: 8px;
+        align-items: center;
+        padding: 10px 12px 12px;
+        border-top: 1px solid var(--line);
+      }
+
+      .outcome-controls label {
+        margin: 0;
+        color: var(--muted);
+        font-size: 12px;
+      }
+
+      .outcome-select {
+        height: 34px;
+        border-radius: 8px;
+        background: #eef4f7;
+        font-weight: 800;
+      }
+
+      .view-tabs {
+        display: inline-flex;
+        gap: 4px;
+        margin: 14px 0;
+        padding: 4px;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        background: #eef4f7;
+      }
+
+      .view-tab {
+        border: 0;
+        border-radius: 6px;
+        padding: 8px 14px;
+        background: transparent;
+        font-weight: 900;
+        color: var(--muted);
+        cursor: pointer;
+      }
+
+      .view-tab.active {
+        background: #fff;
+        color: var(--text);
+        box-shadow: 0 1px 2px rgba(15, 23, 42, 0.08);
+      }
+
+      .view-panel.hidden {
+        display: none;
+      }
+
+      .analysis-area {
+        display: grid;
+        gap: 14px;
+      }
+
+      .analysis-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+        gap: 12px;
+      }
+
+      .analysis-card {
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        background: #fff;
+        padding: 12px;
+      }
+
+      .analysis-label {
+        color: var(--muted);
+        font-size: 12px;
+        font-weight: 800;
+      }
+
+      .analysis-value {
+        margin-top: 5px;
+        font-size: 26px;
+        font-weight: 900;
+        color: var(--primary);
+      }
+
+      .analysis-note {
+        margin-top: 5px;
+        color: var(--muted);
+        font-size: 12px;
+        line-height: 1.45;
+      }
+
+      .analysis-table-wrap {
+        overflow-x: auto;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        background: #fff;
+      }
+
+      .analysis-table {
+        width: 100%;
+        border-collapse: collapse;
+        min-width: 520px;
+      }
+
+      .analysis-table th,
+      .analysis-table td {
+        padding: 10px 12px;
+        border-bottom: 1px solid var(--line);
+        text-align: left;
+        vertical-align: top;
+      }
+
+      .analysis-table th {
+        background: #f9fbfc;
+        color: var(--muted);
+        font-size: 12px;
+        font-weight: 900;
+      }
+
+      .analysis-table tr:last-child td {
+        border-bottom: 0;
+      }
+
+      .analysis-combo {
+        font-weight: 900;
+        overflow-wrap: anywhere;
+      }
+
       .empty {
         min-height: 260px;
         display: grid;
@@ -656,6 +828,10 @@
               <span id="participantCount">0名</span>
               <span id="capacityCount">定員 12名</span>
             </div>
+            <div id="participantTags" class="tag-panel" aria-label="参加者タグ設定">
+              <div class="tag-panel-head">タグ設定（カンマ・スペース区切り）</div>
+              <div id="participantTagRows"></div>
+            </div>
           </div>
 
           <div class="section">
@@ -748,7 +924,12 @@
             </div>
             <div id="toast" class="toast" role="status" aria-live="polite"></div>
           </div>
-          <div id="resultArea" class="empty">まだ結果はありません。</div>
+          <div class="view-tabs" role="tablist" aria-label="結果表示切替">
+            <button id="resultViewTab" class="view-tab active" type="button" role="tab" aria-selected="true">結果</button>
+            <button id="analysisViewTab" class="view-tab" type="button" role="tab" aria-selected="false">分析</button>
+          </div>
+          <div id="resultArea" class="view-panel empty">まだ結果はありません。</div>
+          <div id="analysisArea" class="view-panel hidden"></div>
         </section>
       </main>
     </div>
@@ -760,6 +941,7 @@
         category: "member-assignment.category",
         custom: "member-assignment.customFormat",
         leaguePreferences: "member-assignment.leaguePreferences",
+        participantTags: "member-assignment.participantTags",
         bowling: "member-assignment.bowlingFormat",
         history: "member-assignment.history",
       };
@@ -843,6 +1025,8 @@
       const state = {
         currentResult: null,
         activeCategory: "bowling",
+        activeView: "result",
+        loadedHistoryId: null,
       };
 
       const participantsInput = document.querySelector("#participants");
@@ -857,9 +1041,13 @@
       const bowlingLaneCount = document.querySelector("#bowlingLaneCount");
       const laneCapacityList = document.querySelector("#laneCapacityList");
       const formatPreview = document.querySelector("#formatPreview");
+      const participantTagRows = document.querySelector("#participantTagRows");
       const leaguePreferences = document.querySelector("#leaguePreferences");
       const leaguePreferenceRows = document.querySelector("#leaguePreferenceRows");
       const resultArea = document.querySelector("#resultArea");
+      const analysisArea = document.querySelector("#analysisArea");
+      const resultViewTab = document.querySelector("#resultViewTab");
+      const analysisViewTab = document.querySelector("#analysisViewTab");
       const resultSummary = document.querySelector("#resultSummary");
       const toast = document.querySelector("#toast");
       const historyList = document.querySelector("#historyList");
@@ -872,13 +1060,16 @@
       document.querySelector("#clearParticipantsButton").addEventListener("click", clearParticipants);
       participantsInput.addEventListener("input", () => {
         state.currentResult = null;
+        state.loadedHistoryId = null;
         renderEmptyResult();
         persist();
+        renderParticipantTags();
         renderLeaguePreferences();
         updateCountsAndPreview();
       });
       formatSelect.addEventListener("change", () => {
         state.currentResult = null;
+        state.loadedHistoryId = null;
         renderEmptyResult();
         renderBowlingLaneInputs();
         persist();
@@ -889,6 +1080,7 @@
         tab.addEventListener("click", () => {
           state.activeCategory = tab.dataset.category;
           state.currentResult = null;
+          state.loadedHistoryId = null;
           renderFormatOptions();
           renderEmptyResult();
           renderBowlingLaneInputs();
@@ -899,23 +1091,28 @@
       });
       slotCount.addEventListener("input", () => {
         state.currentResult = null;
+        state.loadedHistoryId = null;
         renderEmptyResult();
         persist();
         updateCountsAndPreview();
       });
       slotCapacity.addEventListener("input", () => {
         state.currentResult = null;
+        state.loadedHistoryId = null;
         renderEmptyResult();
         persist();
         updateCountsAndPreview();
       });
       bowlingLaneCount.addEventListener("input", () => {
         state.currentResult = null;
+        state.loadedHistoryId = null;
         renderEmptyResult();
         renderBowlingLaneInputs();
         persist();
         updateCountsAndPreview();
       });
+      resultViewTab.addEventListener("click", () => setActiveView("result"));
+      analysisViewTab.addEventListener("click", () => setActiveView("analysis"));
 
       init();
 
@@ -938,16 +1135,21 @@
         state.activeCategory = localStorage.getItem(storageKeys.category) || savedTemplate.category;
         renderFormatOptions(savedTemplate.id);
         renderBowlingLaneInputs();
+        renderParticipantTags();
         renderLeaguePreferences();
         renderHistoryList();
+        renderAnalysis();
         updateCountsAndPreview();
       }
 
       function clearParticipants() {
         participantsInput.value = "";
         state.currentResult = null;
+        state.loadedHistoryId = null;
+        localStorage.setItem(storageKeys.participantTags, "{}");
         renderEmptyResult();
         persist();
+        renderParticipantTags();
         renderLeaguePreferences();
         updateCountsAndPreview();
         showToast("参加者をクリアしました");
@@ -1022,6 +1224,7 @@
         laneCapacityList.querySelectorAll(".lane-capacity-input").forEach((input) => {
           input.addEventListener("input", () => {
             state.currentResult = null;
+            state.loadedHistoryId = null;
             renderEmptyResult();
             persist();
             updateCountsAndPreview();
@@ -1097,15 +1300,97 @@
       }
 
       function getParticipants() {
-        return participantsInput.value
-          .split(/\r?\n/)
-          .map((name) => name.trim())
-          .filter(Boolean)
-          .map((name, index) => ({
+        const tagMap = readParticipantTagMap();
+        return getParticipantNames().map((name, index) => ({
             id: `p-${index}-${name}`,
             name,
             active: true,
+            tags: parseTags(tagMap[name] || ""),
           }));
+      }
+
+      function getParticipantNames() {
+        return participantsInput.value
+          .split(/\r?\n/)
+          .map((name) => name.trim())
+          .filter(Boolean);
+      }
+
+      function parseTags(value) {
+        return [...new Set(String(value || "").split(/[,\s、]+/).map((tag) => tag.trim()).filter(Boolean))];
+      }
+
+      function readParticipantTagMap() {
+        const tagMap = readJson(storageKeys.participantTags);
+        return tagMap && typeof tagMap === "object" && !Array.isArray(tagMap) ? tagMap : {};
+      }
+
+      function writeParticipantTag(name, value) {
+        const nextMap = readParticipantTagMap();
+        if (value.trim()) {
+          nextMap[name] = value.trim();
+        } else {
+          delete nextMap[name];
+        }
+        localStorage.setItem(storageKeys.participantTags, JSON.stringify(nextMap));
+        syncCurrentResultParticipantTags();
+        renderAnalysis();
+      }
+
+      function renderParticipantTags() {
+        const names = getParticipantNames();
+        const tagMap = readParticipantTagMap();
+        participantTagRows.innerHTML = "";
+
+        if (names.length === 0) {
+          const empty = document.createElement("div");
+          empty.className = "tag-empty";
+          empty.textContent = "参加者を入力すると、タグを設定できます。";
+          participantTagRows.append(empty);
+          return;
+        }
+
+        names.forEach((name) => {
+          const row = document.createElement("div");
+          row.className = "tag-row";
+
+          const label = document.createElement("div");
+          label.className = "tag-name";
+          label.textContent = name;
+
+          const input = document.createElement("input");
+          input.className = "tag-input";
+          input.type = "text";
+          input.placeholder = "例: Aチーム 01得意";
+          input.value = tagMap[name] || "";
+          input.addEventListener("input", () => writeParticipantTag(name, input.value));
+
+          row.append(label, input);
+          participantTagRows.append(row);
+        });
+      }
+
+      function syncCurrentResultParticipantTags() {
+        if (!state.currentResult) return;
+        const latest = new Map(getParticipants().map((participant) => [participant.id, participant]));
+        const syncParticipant = (participant) => participant ? { ...participant, tags: latest.get(participant.id)?.tags || [] } : null;
+
+        state.currentResult.assignments.forEach((assignment) => {
+          assignment.participants = assignment.participants.map(syncParticipant);
+        });
+        state.currentResult.waiting = state.currentResult.waiting.map(syncParticipant).filter(Boolean);
+        updateLoadedHistoryResult();
+      }
+
+      function setActiveView(view) {
+        state.activeView = view;
+        const isAnalysis = view === "analysis";
+        resultViewTab.classList.toggle("active", !isAnalysis);
+        analysisViewTab.classList.toggle("active", isAnalysis);
+        resultViewTab.setAttribute("aria-selected", String(!isAnalysis));
+        analysisViewTab.setAttribute("aria-selected", String(isAnalysis));
+        resultArea.classList.toggle("hidden", isAnalysis);
+        analysisArea.classList.toggle("hidden", !isAnalysis);
       }
 
       function getFormat() {
@@ -1317,6 +1602,7 @@
           return;
         }
 
+        state.loadedHistoryId = null;
         state.currentResult = assignParticipants(participants, format);
         renderResult(state.currentResult);
         persist();
@@ -1331,7 +1617,7 @@
       }
 
       function renderResult(result) {
-        resultArea.className = "";
+        resultArea.className = "view-panel";
         resultArea.innerHTML = "";
 
         resultArea.append(createParticipantSummary(result));
@@ -1363,6 +1649,8 @@
         } else {
           resultSummary.textContent = `${assignedCount}名を割り振り、${result.waiting.length}名が待機です。`;
         }
+        renderAnalysis();
+        setActiveView(state.activeView);
       }
 
       function createParticipantSummary(result) {
@@ -1380,9 +1668,10 @@
           const item = document.createElement("div");
           item.className = "participant-stat";
 
+          const outcomeText = stat.wins + stat.losses > 0 ? ` / ${stat.wins}勝${stat.losses}敗` : "";
           const details = result.assignmentMode === "balanced-reuse"
-            ? `シングル ${stat.singles} / 前半 ${stat.firstHalf} / 後半 ${stat.secondHalf}`
-            : `割り振り ${stat.total} / 待機 ${stat.waiting}`;
+            ? `シングル ${stat.singles} / 前半 ${stat.firstHalf} / 後半 ${stat.secondHalf}${outcomeText}`
+            : `割り振り ${stat.total} / 待機 ${stat.waiting}${outcomeText}`;
 
           item.innerHTML = `
             <div class="participant-stat-name">${escapeHtml(stat.name)}</div>
@@ -1407,6 +1696,8 @@
               firstHalf: 0,
               secondHalf: 0,
               waiting: 0,
+              wins: 0,
+              losses: 0,
             },
           ])
         );
@@ -1421,11 +1712,15 @@
               firstHalf: 0,
               secondHalf: 0,
               waiting: 0,
+              wins: 0,
+              losses: 0,
             };
             stat.total += 1;
             if (assignment.gameType === "single") stat.singles += 1;
             if (assignment.half === "first") stat.firstHalf += 1;
             if (assignment.half === "second") stat.secondHalf += 1;
+            if (assignment.outcome === "win") stat.wins += 1;
+            if (assignment.outcome === "loss") stat.losses += 1;
             stats.set(participant.id, stat);
           });
         });
@@ -1439,9 +1734,11 @@
       }
 
       function renderEmptyResult() {
-        resultArea.className = "empty";
+        resultArea.className = "view-panel empty";
         resultArea.textContent = "まだ結果はありません。";
         resultSummary.textContent = "参加者を入力して割り振ってください。";
+        renderAnalysis();
+        setActiveView(state.activeView);
       }
 
       function createSlotCard(assignment, assignmentIndex) {
@@ -1477,7 +1774,51 @@
           }
         }
         card.append(list);
+
+        if (!assignment.isWaiting) {
+          card.append(createOutcomeControls(assignment, assignmentIndex));
+        }
         return card;
+      }
+
+      function createOutcomeControls(assignment, assignmentIndex) {
+        const wrapper = document.createElement("div");
+        wrapper.className = "outcome-controls";
+
+        const label = document.createElement("label");
+        label.setAttribute("for", `outcome-${assignmentIndex}`);
+        label.textContent = "勝敗";
+
+        const select = document.createElement("select");
+        select.id = `outcome-${assignmentIndex}`;
+        select.className = "outcome-select";
+        select.dataset.assignmentIndex = String(assignmentIndex);
+        [
+          ["", "未入力"],
+          ["win", "勝ち"],
+          ["loss", "負け"],
+        ].forEach(([value, text]) => {
+          const option = document.createElement("option");
+          option.value = value;
+          option.textContent = text;
+          select.append(option);
+        });
+        select.value = assignment.outcome || "";
+        select.addEventListener("change", handleOutcomeChange);
+
+        wrapper.append(label, select);
+        return wrapper;
+      }
+
+      function handleOutcomeChange(event) {
+        if (!state.currentResult) return;
+        const assignmentIndex = Number(event.target.dataset.assignmentIndex);
+        const assignment = state.currentResult.assignments[assignmentIndex];
+        if (!assignment) return;
+        assignment.outcome = event.target.value;
+        updateLoadedHistoryResult();
+        renderResult(state.currentResult);
+        showToast("勝敗を更新しました");
       }
 
       function countAssignedMembers(assignment) {
@@ -1539,6 +1880,7 @@
           nextParticipants[seatIndex] = null;
         }
         assignment.participants = nextParticipants;
+        updateLoadedHistoryResult();
         renderResult(state.currentResult);
         showToast("変更しました");
       }
@@ -1576,6 +1918,170 @@
           singleGames <= singleLimit &&
           Object.entries(halfLimits).every(([half, limit]) => halfGames[half] <= limit)
         );
+      }
+
+      function renderAnalysis() {
+        const data = buildAnalysisData();
+        analysisArea.className = state.activeView === "analysis" ? "view-panel analysis-area" : "view-panel analysis-area hidden";
+
+        if (data.totalGames === 0) {
+          analysisArea.innerHTML = `
+            <div class="empty">
+              勝敗が入力された試合がまだありません。結果カードまたは履歴から勝敗を登録すると分析できます。
+            </div>
+          `;
+          return;
+        }
+
+        const bestCombo = data.comboStats[0];
+        analysisArea.innerHTML = `
+          <div class="analysis-grid">
+            <div class="analysis-card">
+              <div class="analysis-label">全試合 勝率</div>
+              <div class="analysis-value">${formatPercent(data.wins, data.totalGames)}</div>
+              <div class="analysis-note">${data.wins}勝 / ${data.totalGames - data.wins}敗 / ${data.totalGames}試合</div>
+            </div>
+            <div class="analysis-card">
+              <div class="analysis-label">集計対象</div>
+              <div class="analysis-value">${data.sourceCount}件</div>
+              <div class="analysis-note">保存履歴と現在表示中の未保存結果を集計します。</div>
+            </div>
+            <div class="analysis-card">
+              <div class="analysis-label">最高勝率の組み合わせ</div>
+              <div class="analysis-value">${bestCombo ? formatPercent(bestCombo.wins, bestCombo.total) : "-"}</div>
+              <div class="analysis-note">${bestCombo ? escapeHtml(bestCombo.label) : "該当なし"}</div>
+            </div>
+          </div>
+          <section>
+            <h3>タグ別勝率</h3>
+            ${createAnalysisTable(
+              ["タグ", "勝率", "勝敗", "出場回数"],
+              data.tagStats.map((stat) => [
+                escapeHtml(stat.label),
+                formatPercent(stat.wins, stat.total),
+                `${stat.wins}勝 / ${stat.total - stat.wins}敗`,
+                `${stat.total}回`,
+              ]),
+              "タグが登録された出場データがありません。"
+            )}
+          </section>
+          <section>
+            <h3>組み合わせ別勝率</h3>
+            ${createAnalysisTable(
+              ["組み合わせ", "勝率", "勝敗", "試合数"],
+              data.comboStats.map((stat) => [
+                `<span class="analysis-combo">${escapeHtml(stat.label)}</span>`,
+                formatPercent(stat.wins, stat.total),
+                `${stat.wins}勝 / ${stat.total - stat.wins}敗`,
+                `${stat.total}試合`,
+              ]),
+              "勝敗が登録された組み合わせがありません。"
+            )}
+          </section>
+        `;
+      }
+
+      function buildAnalysisData() {
+        const histories = readHistory();
+        const sources = histories.map((entry) => ({
+          id: entry.id,
+          result: hydrateResultTags(entry.result, entry.participantTags || {}),
+        }));
+
+        if (state.currentResult && !state.loadedHistoryId) {
+          sources.push({
+            id: "current",
+            result: JSON.parse(JSON.stringify(state.currentResult)),
+          });
+        }
+
+        let wins = 0;
+        let totalGames = 0;
+        const tagStats = new Map();
+        const comboStats = new Map();
+
+        sources.forEach((source) => {
+          source.result.assignments.forEach((assignment) => {
+            if (!["win", "loss"].includes(assignment.outcome)) return;
+            const members = assignment.participants.filter(Boolean);
+            if (members.length === 0) return;
+
+            totalGames += 1;
+            const isWin = assignment.outcome === "win";
+            if (isWin) wins += 1;
+
+            members.forEach((participant) => {
+              const tags = participant.tags?.length ? participant.tags : ["タグなし"];
+              tags.forEach((tag) => {
+                const stat = tagStats.get(tag) || { label: tag, wins: 0, total: 0 };
+                stat.total += 1;
+                if (isWin) stat.wins += 1;
+                tagStats.set(tag, stat);
+              });
+            });
+
+            const label = members.map((participant) => participant.name).sort((a, b) => a.localeCompare(b, "ja")).join(" + ");
+            const combo = comboStats.get(label) || { label, wins: 0, total: 0 };
+            combo.total += 1;
+            if (isWin) combo.wins += 1;
+            comboStats.set(label, combo);
+          });
+        });
+
+        return {
+          wins,
+          totalGames,
+          sourceCount: sources.length,
+          tagStats: sortAnalysisStats([...tagStats.values()]),
+          comboStats: sortAnalysisStats([...comboStats.values()]),
+        };
+      }
+
+      function hydrateResultTags(result, participantTags) {
+        const nextResult = JSON.parse(JSON.stringify(result || { assignments: [], waiting: [] }));
+        nextResult.assignments = (nextResult.assignments || []).map((assignment) => ({
+          ...assignment,
+          participants: (assignment.participants || []).map((participant) =>
+            participant ? { ...participant, tags: participant.tags || parseTags(participantTags[participant.name] || "") } : null
+          ),
+        }));
+        nextResult.waiting = (nextResult.waiting || []).map((participant) =>
+          participant ? { ...participant, tags: participant.tags || parseTags(participantTags[participant.name] || "") } : null
+        );
+        return nextResult;
+      }
+
+      function sortAnalysisStats(stats) {
+        return stats.sort((a, b) => {
+          const rateDiff = b.wins / b.total - a.wins / a.total;
+          if (rateDiff) return rateDiff;
+          return b.total - a.total || a.label.localeCompare(b.label, "ja");
+        });
+      }
+
+      function createAnalysisTable(headers, rows, emptyText) {
+        if (rows.length === 0) {
+          return `<div class="empty">${escapeHtml(emptyText)}</div>`;
+        }
+        return `
+          <div class="analysis-table-wrap">
+            <table class="analysis-table">
+              <thead>
+                <tr>${headers.map((header) => `<th>${escapeHtml(header)}</th>`).join("")}</tr>
+              </thead>
+              <tbody>
+                ${rows
+                  .map((row) => `<tr>${row.map((cell) => `<td>${cell}</td>`).join("")}</tr>`)
+                  .join("")}
+              </tbody>
+            </table>
+          </div>
+        `;
+      }
+
+      function formatPercent(wins, total) {
+        if (!total) return "-";
+        return `${Math.round((wins / total) * 1000) / 10}%`;
       }
 
       async function copyResult() {
@@ -1620,6 +2126,9 @@
         const lines = [];
         result.assignments.forEach((assignment) => {
           lines.push(`${assignment.slotLabel}`);
+          if (assignment.outcome) {
+            lines.push(`結果: ${getOutcomeLabel(assignment.outcome)}`);
+          }
           for (let index = 0; index < assignment.capacity; index += 1) {
             const participant = assignment.participants[index];
             lines.push(participant ? `- ${participant.name}` : "- 空き");
@@ -1635,14 +2144,21 @@
         lines.push("");
         lines.push("個人別 出場数");
         buildParticipantStats(result).forEach((stat) => {
+          const outcomeText = stat.wins + stat.losses > 0 ? ` / ${stat.wins}勝${stat.losses}敗` : "";
           if (result.assignmentMode === "balanced-reuse") {
-            lines.push(`- ${stat.name}: ${stat.total}試合（シングル${stat.singles} / 前半${stat.firstHalf} / 後半${stat.secondHalf}）`);
+            lines.push(`- ${stat.name}: ${stat.total}試合${outcomeText}（シングル${stat.singles} / 前半${stat.firstHalf} / 後半${stat.secondHalf}）`);
           } else {
-            lines.push(`- ${stat.name}: ${stat.total}試合（待機${stat.waiting}）`);
+            lines.push(`- ${stat.name}: ${stat.total}試合${outcomeText}（待機${stat.waiting}）`);
           }
         });
 
         return lines.join("\n").trim();
+      }
+
+      function getOutcomeLabel(outcome) {
+        if (outcome === "win") return "勝ち";
+        if (outcome === "loss") return "負け";
+        return "未入力";
       }
 
       function updateCountsAndPreview() {
@@ -1696,12 +2212,13 @@
         const format = getFormat();
         const histories = readHistory();
         const entry = {
-          id: `history-${Date.now()}`,
+          id: state.loadedHistoryId || `history-${Date.now()}`,
           savedAt: new Date().toISOString(),
           category: state.activeCategory,
           formatId: format.id,
           formatName: format.name,
           participantsText: participantsInput.value,
+          participantTags: readParticipantTagMap(),
           custom: {
             slotCount: Number(slotCount.value),
             slotCapacity: Number(slotCapacity.value),
@@ -1714,7 +2231,12 @@
           result: JSON.parse(JSON.stringify(state.currentResult)),
         };
 
+        const existingIndex = histories.findIndex((history) => history.id === entry.id);
+        if (existingIndex >= 0) {
+          histories.splice(existingIndex, 1);
+        }
         histories.unshift(entry);
+        state.loadedHistoryId = entry.id;
         localStorage.setItem(storageKeys.history, JSON.stringify(histories.slice(0, 30)));
         renderHistoryList();
         showToast("履歴に保存しました");
@@ -1772,6 +2294,8 @@
         state.activeCategory = entry.category;
         renderFormatOptions(entry.formatId);
         participantsInput.value = entry.participantsText || "";
+        state.loadedHistoryId = entry.id;
+        localStorage.setItem(storageKeys.participantTags, JSON.stringify(entry.participantTags || {}));
 
         if (entry.custom) {
           slotCount.value = entry.custom.slotCount || 4;
@@ -1788,10 +2312,27 @@
 
         state.currentResult = entry.result;
         persist();
+        renderParticipantTags();
         renderLeaguePreferences();
         updateCountsAndPreview();
         renderResult(state.currentResult);
         showToast("履歴を表示しました");
+      }
+
+      function updateLoadedHistoryResult() {
+        if (!state.loadedHistoryId || !state.currentResult) return;
+
+        const histories = readHistory();
+        const index = histories.findIndex((entry) => entry.id === state.loadedHistoryId);
+        if (index < 0) return;
+
+        histories[index] = {
+          ...histories[index],
+          participantTags: readParticipantTagMap(),
+          result: JSON.parse(JSON.stringify(state.currentResult)),
+        };
+        localStorage.setItem(storageKeys.history, JSON.stringify(histories));
+        renderHistoryList();
       }
 
       function deleteHistory(historyId) {
