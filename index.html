@@ -220,6 +220,126 @@
         display: block;
       }
 
+      .darts-roster {
+        display: none;
+        margin-top: 12px;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        background: #fff;
+        overflow: hidden;
+      }
+
+      .darts-roster.show {
+        display: block;
+      }
+
+      .roster-head {
+        padding: 10px;
+        background: #f9fbfc;
+        border-bottom: 1px solid var(--line);
+      }
+
+      .roster-head strong,
+      .roster-head span {
+        display: block;
+      }
+
+      .roster-head span {
+        margin-top: 3px;
+        color: var(--muted);
+        font-size: 12px;
+        line-height: 1.45;
+      }
+
+      .roster-add,
+      .roster-row {
+        display: grid;
+        grid-template-columns: 58px minmax(110px, 1fr) 76px 52px 34px;
+        gap: 8px;
+        align-items: center;
+        padding: 8px 10px;
+      }
+
+      .roster-add {
+        grid-template-columns: minmax(110px, 1fr) 76px auto;
+        border-bottom: 1px solid var(--line);
+      }
+
+      .roster-field {
+        display: grid;
+        gap: 3px;
+      }
+
+      .roster-field label {
+        margin: 0;
+        font-size: 9px;
+        line-height: 1;
+        text-align: center;
+      }
+
+      .roster-columns {
+        display: grid;
+        grid-template-columns: 58px minmax(110px, 1fr) 76px 52px 34px;
+        gap: 8px;
+        align-items: center;
+        padding: 7px 10px;
+        border-bottom: 1px solid var(--line);
+        background: #f9fbfc;
+        color: var(--muted);
+        font-size: 10px;
+        font-weight: 800;
+        text-align: center;
+      }
+
+      .roster-columns span:nth-child(2) {
+        text-align: left;
+      }
+
+      .roster-row + .roster-row {
+        border-top: 1px solid var(--line);
+      }
+
+      .roster-row input,
+      .roster-add input {
+        height: 36px;
+      }
+
+      .roster-check {
+        width: 20px;
+        height: 20px;
+        margin: 0;
+      }
+
+      .roster-rating {
+        text-align: center;
+      }
+
+      .roster-remove {
+        width: 34px;
+        min-height: 34px;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        background: #fff;
+        color: var(--muted);
+        font-size: 18px;
+      }
+
+      .roster-update {
+        min-height: 34px;
+        border: 1px solid var(--primary);
+        border-radius: 8px;
+        background: #fff;
+        color: var(--primary);
+        font-size: 11px;
+        font-weight: 800;
+      }
+
+      .roster-empty {
+        padding: 12px 10px;
+        color: var(--muted);
+        font-size: 13px;
+      }
+
       .preference-head,
       .preference-row {
         display: grid;
@@ -364,6 +484,10 @@
 
       .label-row label {
         margin: 0;
+      }
+
+      .manual-participants.hidden {
+        display: none;
       }
 
       .text-btn {
@@ -853,8 +977,17 @@
         .actions,
         .history-actions,
         .preference-head,
-        .preference-row {
+        .preference-row,
+        .roster-add {
           grid-template-columns: 1fr;
+        }
+
+        .roster-row {
+          grid-template-columns: 52px minmax(0, 1fr) 62px 48px 34px;
+        }
+
+        .roster-columns {
+          grid-template-columns: 52px minmax(0, 1fr) 62px 48px 34px;
         }
 
         .btn.primary {
@@ -886,14 +1019,38 @@
         <section class="panel controls" aria-label="割り振り設定">
           <div class="section">
             <h2>参加者</h2>
-            <div class="label-row">
-              <label for="participants">名前を1行に1人ずつ入力</label>
-              <button id="clearParticipantsButton" class="text-btn" type="button">クリア</button>
+            <div id="manualParticipants" class="manual-participants">
+              <div class="label-row">
+                <label for="participants">名前を1行に1人ずつ入力</label>
+                <button id="clearParticipantsButton" class="text-btn" type="button">クリア</button>
+              </div>
+              <textarea id="participants" spellcheck="false"></textarea>
             </div>
-            <textarea id="participants" spellcheck="false"></textarea>
             <div class="meta-row">
               <span id="participantCount">0名</span>
               <span id="capacityCount">定員 12名</span>
+            </div>
+            <div id="dartsRoster" class="darts-roster" aria-label="ダーツメンバー名簿">
+              <div class="roster-head">
+                <strong>ダーツメンバー名簿</strong>
+                <span>登録後、各メンバーの左端にある「当日参加」をチェックしてください。チェックした人だけが割り振り対象になります。</span>
+              </div>
+              <div class="roster-add">
+                <input id="rosterNameInput" type="text" placeholder="メンバー名" aria-label="名簿に追加するメンバー名" />
+                <div class="roster-field">
+                  <label for="rosterRatingInput">レーティング</label>
+                  <input id="rosterRatingInput" class="roster-rating" type="number" min="1" max="18" value="9" aria-label="レーティング" />
+                </div>
+                <button id="addRosterMemberButton" class="text-btn" type="button">名簿に追加</button>
+              </div>
+              <div class="roster-columns" aria-hidden="true">
+                <span>当日参加</span>
+                <span>名前</span>
+                <span>レーティング</span>
+                <span></span>
+                <span></span>
+              </div>
+              <div id="rosterList"></div>
             </div>
             <div id="resultTags" class="tag-panel" aria-label="抽選結果タグ設定">
               <div class="tag-panel-head">抽選結果タグ（分析時にタグ単位で集約）</div>
@@ -1017,6 +1174,7 @@
         resultTags: "member-assignment.resultTags",
         lastResultTags: "member-assignment.lastResultTags",
         bowling: "member-assignment.bowlingFormat",
+        dartsRoster: "member-assignment.dartsRoster",
         history: "member-assignment.history",
       };
 
@@ -1105,6 +1263,7 @@
       };
 
       const participantsInput = document.querySelector("#participants");
+      const manualParticipants = document.querySelector("#manualParticipants");
       const participantCount = document.querySelector("#participantCount");
       const capacityCount = document.querySelector("#capacityCount");
       const formatTabs = [...document.querySelectorAll(".format-tab")];
@@ -1117,6 +1276,10 @@
       const laneCapacityList = document.querySelector("#laneCapacityList");
       const formatPreview = document.querySelector("#formatPreview");
       const resultTagInput = document.querySelector("#resultTagInput");
+      const dartsRoster = document.querySelector("#dartsRoster");
+      const rosterNameInput = document.querySelector("#rosterNameInput");
+      const rosterRatingInput = document.querySelector("#rosterRatingInput");
+      const rosterList = document.querySelector("#rosterList");
       const leaguePreferences = document.querySelector("#leaguePreferences");
       const leaguePreferenceRows = document.querySelector("#leaguePreferenceRows");
       const resultArea = document.querySelector("#resultArea");
@@ -1134,6 +1297,10 @@
       document.querySelector("#saveHistoryButton").addEventListener("click", saveCurrentResultToHistory);
       document.querySelector("#clearHistoryButton").addEventListener("click", clearHistory);
       document.querySelector("#clearParticipantsButton").addEventListener("click", clearParticipants);
+      document.querySelector("#addRosterMemberButton").addEventListener("click", addRosterMember);
+      rosterNameInput.addEventListener("keydown", (event) => {
+        if (event.key === "Enter") addRosterMember();
+      });
       document.querySelector("#exportDataButton").addEventListener("click", exportAppData);
       document.querySelector("#importDataButton").addEventListener("click", () => importDataInput.click());
       importDataInput.addEventListener("change", importAppData);
@@ -1148,6 +1315,7 @@
         renderEmptyResult();
         persist();
         renderLeaguePreferences();
+        syncRosterSelectionState();
         updateCountsAndPreview();
       });
       formatSelect.addEventListener("change", () => {
@@ -1168,6 +1336,7 @@
           renderEmptyResult();
           renderBowlingLaneInputs();
           persist();
+          renderDartsRoster();
           renderLeaguePreferences();
           updateCountsAndPreview();
         });
@@ -1220,6 +1389,7 @@
           localStorage.getItem(storageKeys.resultTags) || localStorage.getItem(storageKeys.lastResultTags) || "";
         renderFormatOptions(savedTemplate.id);
         renderBowlingLaneInputs();
+        renderDartsRoster();
         renderLeaguePreferences();
         renderHistoryList();
         renderAnalysis();
@@ -1233,6 +1403,7 @@
         renderEmptyResult();
         persist();
         renderLeaguePreferences();
+        syncRosterSelectionState();
         updateCountsAndPreview();
         showToast("参加者をクリアしました");
       }
@@ -1382,12 +1553,163 @@
       }
 
       function getParticipants() {
-        return getParticipantNames().map((name, index) => ({
+        const roster = readDartsRoster();
+        const ratings = new Map(roster.map((member) => [member.name, member.rating]));
+        const participantNames =
+          state.activeCategory === "darts"
+            ? getParticipantNames().filter((name) => ratings.has(name))
+            : getParticipantNames();
+        return participantNames.map((name, index) => ({
             id: `p-${index}-${name}`,
             name,
+            rating: ratings.get(name) || null,
             active: true,
             tags: [],
           }));
+      }
+
+      function readDartsRoster() {
+        const roster = readJson(storageKeys.dartsRoster);
+        if (!Array.isArray(roster)) return [];
+        return roster
+          .filter((member) => member && String(member.name || "").trim())
+          .map((member) => ({
+            id: member.id || `roster-${Date.now()}-${Math.random().toString(16).slice(2)}`,
+            name: String(member.name).trim(),
+            rating: clampNumber(Number(member.rating) || 9, 1, 18),
+          }));
+      }
+
+      function saveDartsRoster(roster) {
+        localStorage.setItem(storageKeys.dartsRoster, JSON.stringify(roster));
+      }
+
+      function addRosterMember() {
+        const name = rosterNameInput.value.trim();
+        if (!name) {
+          showToast("メンバー名を入力してください");
+          return;
+        }
+        const roster = readDartsRoster();
+        if (roster.some((member) => member.name === name)) {
+          showToast("同じ名前が名簿に登録されています");
+          return;
+        }
+        roster.push({
+          id: `roster-${Date.now()}-${Math.random().toString(16).slice(2)}`,
+          name,
+          rating: clampNumber(Number(rosterRatingInput.value) || 9, 1, 18),
+        });
+        saveDartsRoster(roster);
+        rosterNameInput.value = "";
+        renderDartsRoster();
+        showToast("名簿に追加しました");
+      }
+
+      function renderDartsRoster() {
+        manualParticipants.classList.toggle("hidden", state.activeCategory === "darts");
+        dartsRoster.classList.toggle("show", state.activeCategory === "darts");
+        if (state.activeCategory !== "darts") return;
+
+        const roster = readDartsRoster();
+        const selectedNames = new Set(getParticipantNames());
+        rosterList.innerHTML = "";
+        if (roster.length === 0) {
+          rosterList.innerHTML = '<div class="roster-empty">名簿はまだ空です。上の欄から登録してください。</div>';
+          return;
+        }
+
+        roster.forEach((member) => {
+          const row = document.createElement("div");
+          row.className = "roster-row";
+          row.dataset.rosterId = member.id;
+          row.innerHTML = `
+            <input class="roster-check" type="checkbox" ${selectedNames.has(member.name) ? "checked" : ""} aria-label="${escapeHtml(member.name)}を当日の参加者にする" />
+            <input class="roster-name" type="text" value="${escapeHtml(member.name)}" aria-label="メンバー名" />
+            <input class="roster-rating" type="number" min="1" max="18" value="${member.rating}" aria-label="${escapeHtml(member.name)}のレーティング" />
+            <button class="roster-update" type="button">更新</button>
+            <button class="roster-remove" type="button" title="名簿から削除" aria-label="${escapeHtml(member.name)}を名簿から削除">×</button>
+          `;
+          rosterList.append(row);
+        });
+
+        rosterList.querySelectorAll(".roster-check").forEach((input) => {
+          input.addEventListener("change", applyRosterSelection);
+        });
+        rosterList.querySelectorAll(".roster-update").forEach((button) => {
+          button.addEventListener("click", updateRosterMember);
+        });
+        rosterList.querySelectorAll(".roster-remove").forEach((button) => {
+          button.addEventListener("click", removeRosterMember);
+        });
+      }
+
+      function syncRosterSelectionState() {
+        if (state.activeCategory !== "darts") return;
+        const selectedNames = new Set(getParticipantNames());
+        rosterList.querySelectorAll(".roster-row").forEach((row) => {
+          const name = row.querySelector(".roster-name")?.value.trim();
+          const checkbox = row.querySelector(".roster-check");
+          if (checkbox) checkbox.checked = selectedNames.has(name);
+        });
+      }
+
+      function applyRosterSelection() {
+        const selectedRosterNames = [...rosterList.querySelectorAll(".roster-row")]
+          .filter((row) => row.querySelector(".roster-check")?.checked)
+          .map((row) => row.querySelector(".roster-name")?.value.trim())
+          .filter(Boolean);
+        participantsInput.value = selectedRosterNames.join("\n");
+        state.currentResult = null;
+        state.loadedHistoryId = null;
+        renderEmptyResult();
+        persist();
+        renderLeaguePreferences();
+        updateCountsAndPreview();
+      }
+
+      function updateRosterMember(event) {
+        const row = event.target.closest(".roster-row");
+        const roster = readDartsRoster();
+        const member = roster.find((item) => item.id === row?.dataset.rosterId);
+        if (!member) return;
+        const previousName = member.name;
+        const nextName = row.querySelector(".roster-name").value.trim();
+        if (!nextName || roster.some((item) => item.id !== member.id && item.name === nextName)) {
+          showToast(!nextName ? "メンバー名は空欄にできません" : "同じ名前が名簿に登録されています");
+          renderDartsRoster();
+          return;
+        }
+        member.name = nextName;
+        member.rating = clampNumber(Number(row.querySelector(".roster-rating").value) || 9, 1, 18);
+        saveDartsRoster(roster);
+        const names = getParticipantNames().map((name) => (name === previousName ? nextName : name));
+        participantsInput.value = [...new Set(names)].join("\n");
+        state.currentResult = null;
+        state.loadedHistoryId = null;
+        renderEmptyResult();
+        persist();
+        renderDartsRoster();
+        renderLeaguePreferences();
+        updateCountsAndPreview();
+        showToast("名簿を更新しました");
+      }
+
+      function removeRosterMember(event) {
+        const row = event.target.closest(".roster-row");
+        const roster = readDartsRoster();
+        const removed = roster.find((member) => member.id === row?.dataset.rosterId);
+        if (!removed) return;
+        saveDartsRoster(roster.filter((member) => member.id !== removed.id));
+        participantsInput.value = getParticipantNames().filter((name) => name !== removed.name).join("\n");
+        state.currentResult = null;
+        state.loadedHistoryId = null;
+        renderEmptyResult();
+        persist();
+        renderDartsRoster();
+        renderLeaguePreferences();
+        updateCountsAndPreview();
+        showToast("名簿から削除しました");
       }
 
       function getParticipantNames() {
@@ -1507,7 +1829,7 @@
             slotId: slot.id,
             slotLabel: slot.label,
             capacity: slot.capacity,
-            participants: members,
+            participants: format.category === "darts" ? sortParticipantsByRating(members) : members,
           };
         });
 
@@ -1519,6 +1841,10 @@
 
       function assignParticipantsWithBalancedReuse(participants, format) {
         const leaguePreferences = readJson(storageKeys.leaguePreferences) || {};
+        const ratedParticipants = participants.filter((participant) => Number.isFinite(participant.rating));
+        const averageRating = ratedParticipants.length
+          ? ratedParticipants.reduce((total, participant) => total + participant.rating, 0) / ratedParticipants.length
+          : null;
         const appearanceCounts = new Map(participants.map((participant) => [participant.id, 0]));
         const singleCounts = new Map(participants.map((participant) => [participant.id, 0]));
         const halfCounts = {
@@ -1548,8 +1874,8 @@
               )
               .sort((a, b) => {
                 return (
-                  getLeagueCandidateScore(a, slot, appearanceCounts, singleCounts, halfCounts, leaguePreferences) -
-                  getLeagueCandidateScore(b, slot, appearanceCounts, singleCounts, halfCounts, leaguePreferences)
+                  getLeagueCandidateScore(a, slot, members, averageRating, appearanceCounts, singleCounts, halfCounts, leaguePreferences) -
+                  getLeagueCandidateScore(b, slot, members, averageRating, appearanceCounts, singleCounts, halfCounts, leaguePreferences)
                 );
               });
 
@@ -1569,7 +1895,7 @@
             capacity: slot.capacity,
             gameType: slot.gameType,
             half: slot.half,
-            participants: members,
+            participants: sortParticipantsByRating(members),
           };
         });
 
@@ -1596,15 +1922,39 @@
         return formatOrResult.constraints?.maxSinglesPerParticipant || Number.POSITIVE_INFINITY;
       }
 
-      function getLeagueCandidateScore(participant, slot, appearanceCounts, singleCounts, halfCounts, leaguePreferences) {
+      function sortParticipantsByRating(participants) {
+        return [...participants].sort((a, b) => {
+          if (!a && !b) return 0;
+          if (!a) return 1;
+          if (!b) return -1;
+          const aHasRating = Number.isFinite(a.rating);
+          const bHasRating = Number.isFinite(b.rating);
+          if (aHasRating && bHasRating) return b.rating - a.rating;
+          if (aHasRating) return -1;
+          if (bHasRating) return 1;
+          return 0;
+        });
+      }
+
+      function getLeagueCandidateScore(participant, slot, members, averageRating, appearanceCounts, singleCounts, halfCounts, leaguePreferences) {
         const preference = leaguePreferences[participant.name]?.[slot.half] || "neutral";
         const preferenceBonus = preference === slot.gameFamily ? 0.65 : 0;
         const mismatchPenalty = preference !== "neutral" && preference !== slot.gameFamily ? 0.2 : 0;
+        const ratedMembers = members.filter((member) => Number.isFinite(member.rating));
+        const ratingBalancePenalty =
+          slot.capacity > 1 && ratedMembers.length > 0 && Number.isFinite(participant.rating) && Number.isFinite(averageRating)
+            ? Math.abs(
+                ratedMembers.reduce((total, member) => total + member.rating, 0) +
+                  participant.rating -
+                  averageRating * (ratedMembers.length + 1)
+              ) * 0.8
+            : 0;
 
         return (
           (appearanceCounts.get(participant.id) || 0) * 10 +
           (halfCounts[slot.half]?.get(participant.id) || 0) * 4 +
           (singleCounts.get(participant.id) || 0) * 2 +
+          ratingBalancePenalty +
           mismatchPenalty -
           preferenceBonus
         );
@@ -1623,7 +1973,7 @@
         const participants = getParticipants();
         const format = getFormat();
         if (participants.length === 0) {
-          showToast("参加者を入力してください");
+          showToast(state.activeCategory === "darts" ? "当日参加するメンバーをチェックしてください" : "参加者を入力してください");
           return;
         }
         if (format.minParticipants && participants.length < format.minParticipants) {
@@ -1870,7 +2220,7 @@
         getParticipants().forEach((participant) => {
           const option = document.createElement("option");
           option.value = participant.id;
-          option.textContent = participant.name;
+          option.textContent = participant.rating ? `${participant.name}（Rt ${participant.rating}）` : participant.name;
           select.append(option);
         });
 
@@ -1909,7 +2259,7 @@
         } else {
           nextParticipants[seatIndex] = null;
         }
-        assignment.participants = nextParticipants;
+        assignment.participants = sortParticipantsByRating(nextParticipants);
         updateLoadedHistoryResult();
         renderResult(state.currentResult);
         showToast("変更しました");
@@ -2250,11 +2600,12 @@
         capacityCount.textContent = `定員 ${capacity}名`;
         customFields.style.display = formatSelect.value === "custom" ? "grid" : "none";
         bowlingFields.classList.toggle("show", format.id === "bowling-4x3");
+        dartsRoster.classList.toggle("show", state.activeCategory === "darts");
         if (format.assignmentMode === "balanced-reuse") {
           const halfText = format.constraints.maxGamesByHalf
             ? ` 前半最大${format.constraints.maxGamesByHalf.first}ゲーム、後半最大${format.constraints.maxGamesByHalf.second}ゲーム。`
             : "";
-          formatPreview.textContent = `${format.slots.length}試合 / 延べ${capacity}出場枠。1人最大${format.constraints.maxGamesPerParticipant}ゲーム、シングル最大${format.constraints.maxSinglesPerParticipant}ゲームまで。${halfText}出場回数がなるべく均等になるように割り振ります。`;
+          formatPreview.textContent = `${format.slots.length}試合 / 延べ${capacity}出場枠。1人最大${format.constraints.maxGamesPerParticipant}ゲーム、シングル最大${format.constraints.maxSinglesPerParticipant}ゲームまで。${halfText}出場回数を均等にしつつ、複数人戦はレーティング差を補い合う組み合わせを優先します。`;
         } else if (format.id === "bowling-4x3") {
           const laneDetails = format.slots.map((slot) => `${slot.label}:${slot.capacity}名`).join(" / ");
           formatPreview.textContent = `${format.slots.length}レーン / 合計${capacity}名まで。${laneDetails}`;
@@ -2416,6 +2767,7 @@
           resultTags: getResultTags(),
         };
         persist();
+        renderDartsRoster();
         renderLeaguePreferences();
         updateCountsAndPreview();
         renderResult(state.currentResult);
